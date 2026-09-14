@@ -8,6 +8,7 @@ import {
   FileText,
   Download,
   Eye,
+  Trash2,
   Loader2,
   TrendingUp,
   AlertCircle,
@@ -15,6 +16,10 @@ import {
   ArrowRight,
   RefreshCw,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   BarChart,
@@ -27,6 +32,7 @@ import {
   Legend,
 } from "recharts";
 import { Card, CardBody, CardHeader, Badge, ProgressBar, Button } from "../components/ui";
+import { DeleteResumeModal, ResumeDeleteItem } from "../components/DeleteResumeModal";
 import { useApp } from "../context/AppContext";
 import { api } from "../services/api";
 
@@ -37,17 +43,28 @@ interface ComparePageProps {
 const CustomChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div
-        className="rounded-lg border border-border px-3 py-2 text-xs shadow-xl"
-        style={{ backgroundColor: "var(--card)" }}
-      >
-        <p className="font-semibold text-foreground mb-1">{label}</p>
-        {payload.map((p: any) => (
-          <p key={p.name} className="font-mono font-medium" style={{ color: p.color }}>
-            {p.name}: {p.value}
-            {p.name === "Job Match" ? "%" : "/100"}
-          </p>
-        ))}
+      <div className="chart-tooltip-glass rounded-xl px-3.5 py-1.5 text-xs shadow-xl transition-all duration-150 select-none pointer-events-none flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:pr-2.5 sm:border-r border-border/60">
+          <p className="font-semibold text-foreground text-xs whitespace-nowrap">{label}</p>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25">
+            Candidate
+          </span>
+        </div>
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+          {payload.map((p: any) => (
+            <div key={p.name} className="flex items-center gap-1 text-xs whitespace-nowrap">
+              <span
+                className="w-2 h-2 rounded-full shrink-0 shadow-xs"
+                style={{ backgroundColor: p.color }}
+              />
+              <span className="tooltip-label text-muted-foreground text-[11px] font-medium">{p.name}:</span>
+              <span className="font-mono font-bold text-xs" style={{ color: p.color }}>
+                {p.value}
+                {p.name === "Job Match" ? "%" : "/100"}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -120,6 +137,7 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
     resumeHistory,
     selectedCompareIds,
     setSelectedCompareIds,
+    deleteResume,
     downloadResume,
     previewResume,
     refreshHistory,
@@ -129,7 +147,27 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
   const [loading, setLoading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [resumeToDelete, setResumeToDelete] = useState<ResumeDeleteItem | null>(null);
+  const [bulkResumesToDelete, setBulkResumesToDelete] = useState<ResumeDeleteItem[] | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isUnfolded, setIsUnfolded] = useState(false);
+
+  const handleConfirmDelete = async (idOrIds: string | string[]) => {
+    try {
+      setIsDeleting(true);
+      const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+      await Promise.all(ids.map((id) => deleteResume(id)));
+      setSelectedCompareIds((prev) => prev.filter((item) => !ids.includes(item)));
+      setResumeToDelete(null);
+      setBulkResumesToDelete(null);
+    } catch (err: any) {
+      console.error("Failed to delete resume", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Sync history on mount
   useEffect(() => {
@@ -246,6 +284,312 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
     return { grade: "C", color: "text-amber-400 border-amber-500/30 bg-amber-500/10" };
   };
 
+  const RESUMES_PER_PAGE = 10;
+  const INITIAL_VISIBLE_COUNT = 10;
+
+  const renderResumeSelectionList = () => {
+    const totalResumes = resumeHistory.length;
+    const totalPages = Math.max(1, Math.ceil(totalResumes / RESUMES_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+
+    const pageStartIndex = (safePage - 1) * RESUMES_PER_PAGE;
+    const currentBatch = resumeHistory.slice(pageStartIndex, pageStartIndex + RESUMES_PER_PAGE);
+
+    const visibleResumes = isUnfolded ? currentBatch : currentBatch.slice(0, INITIAL_VISIBLE_COUNT);
+    const foldedCount = Math.max(0, currentBatch.length - INITIAL_VISIBLE_COUNT);
+
+    return (
+      <Card>
+        <CardHeader className="py-3.5 px-5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Layers size={16} className="text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">
+                Resume Selection ({totalResumes})
+              </h3>
+              <Badge variant={selectedCompareIds.length >= 2 ? "primary" : "warning"}>
+                {selectedCompareIds.length} of {totalResumes} Selected (Min: 2)
+              </Badge>
+              {totalPages > 1 && (
+                <span className="text-xs px-2 py-0.5 rounded font-mono bg-secondary text-secondary-foreground border border-border">
+                  Page {safePage} of {totalPages}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Select or deselect resumes in this list view to update comparison metrics and charts in real time
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={selectTopThree} className="text-xs">
+              Top 3 Presets
+            </Button>
+            <Button variant="outline" size="sm" onClick={selectAll} className="text-xs">
+              Select All ({totalResumes})
+            </Button>
+            {selectedCompareIds.length > 0 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAll}
+                  className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Clear Selection
+                </Button>
+
+                {/* Delete option on the right side of Clear Selection */}
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    const selected = resumeHistory.filter((r: any) => selectedCompareIds.includes(r.id));
+                    setBulkResumesToDelete(selected);
+                  }}
+                  className="text-xs flex items-center gap-1.5 cursor-pointer font-medium"
+                  title="Delete all selected resumes"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Selected ({selectedCompareIds.length})</span>
+                </Button>
+              </>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardBody className="p-0">
+          {totalResumes === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">
+              No resumes found in history. Upload resumes first to enable multi-resume comparison.
+            </div>
+          ) : (
+            <>
+              <div className="divide-y divide-border">
+                {visibleResumes.map((r: any, idx: number) => {
+                  const globalIdx = pageStartIndex + idx;
+                  const resumeId = r.id || `hist-${globalIdx}`;
+                  const isSelected = selectedCompareIds.includes(resumeId);
+                  const candidateName =
+                    r.candidateName ||
+                    (r.filename
+                      ? r.filename.replace(/\.pdf$/i, "").replace(/\.docx$/i, "").replace(/[_-]/g, " ")
+                      : "Candidate");
+                  const ats = r.atsScore ?? 75;
+                  const match = r.jobMatch ?? 70;
+                  const skillsCount = r.skills || (Array.isArray(r.skillsList) ? r.skillsList.length : 15);
+
+                  return (
+                    <div
+                      key={resumeId}
+                      onClick={() => toggleResume(resumeId)}
+                      className={`flex items-center justify-between p-3.5 sm:px-5 gap-3 transition-colors cursor-pointer ${
+                        isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-secondary/40"
+                      }`}
+                    >
+                      {/* Left: Checkbox + Icon + Details */}
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        {/* Checkbox */}
+                        <div
+                          className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all"
+                          style={{
+                            borderColor: isSelected ? "var(--primary)" : "var(--border)",
+                            backgroundColor: isSelected ? "var(--primary)" : "transparent",
+                          }}
+                        >
+                          {isSelected && <CheckCircle2 size={13} className="text-white" />}
+                        </div>
+
+                        {/* File Icon */}
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                          <FileText size={17} />
+                        </div>
+
+                        {/* Text Details */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-foreground truncate max-w-[220px] sm:max-w-xs md:max-w-md">
+                              {r.filename || "Resume.pdf"}
+                            </p>
+                            {r.active && <Badge variant="success">Active</Badge>}
+                            {isSelected ? (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25">
+                                Selected
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                                Click to compare
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {candidateName} · {r.uploadedAt || "Recent"} · {skillsCount} skills detected
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right: Scores & Actions */}
+                      <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+                        {/* Scores */}
+                        <div className="flex items-center gap-3 text-right">
+                          <div>
+                            <span className="font-mono text-sm font-bold text-amber-500 dark:text-amber-400 block leading-none">{ats}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-semibold">ATS</span>
+                          </div>
+                          <div>
+                            <span className="font-mono text-sm font-bold text-emerald-400 block leading-none">{match}%</span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Match</span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1 border-l border-border pl-2 sm:pl-3">
+                          {r.id && (
+                            <>
+                              {/* 1. View / Preview */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePreview(r.id);
+                                }}
+                                title="Preview resume document"
+                                disabled={previewingId === r.id}
+                                className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {previewingId === r.id ? (
+                                  <Loader2 size={14} className="animate-spin text-primary" />
+                                ) : (
+                                  <Eye size={14} />
+                                )}
+                              </button>
+
+                              {/* 2. Download */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownload(r.id, r.filename || "resume.pdf");
+                                }}
+                                title="Download resume document"
+                                disabled={downloadingId === r.id}
+                                className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {downloadingId === r.id ? (
+                                  <Loader2 size={14} className="animate-spin text-primary" />
+                                ) : (
+                                  <Download size={14} />
+                                )}
+                              </button>
+
+                              {/* 3. Delete (shifted to last) */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setResumeToDelete({
+                                    id: r.id,
+                                    filename: r.filename,
+                                    atsScore: ats,
+                                    jobMatch: match,
+                                    uploadedAt: r.uploadedAt,
+                                  });
+                                }}
+                                title="Delete resume"
+                                className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Fold / Unfold Down-Arrow Button */}
+              {currentBatch.length > INITIAL_VISIBLE_COUNT && (
+                <button
+                  type="button"
+                  onClick={() => setIsUnfolded(!isUnfolded)}
+                  className="w-full py-3 px-5 flex items-center justify-center gap-2 text-xs font-semibold text-primary hover:text-primary-foreground hover:bg-primary/10 transition-all border-t border-border group select-none cursor-pointer"
+                >
+                  {isUnfolded ? (
+                    <span className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground">
+                      Fold to 10 Resumes
+                      <ChevronUp size={15} className="transition-transform group-hover:-translate-y-0.5" />
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-primary">
+                      Show {foldedCount} More Resumes ({INITIAL_VISIBLE_COUNT} of {currentBatch.length} shown)
+                      <ChevronDown size={15} className="transition-transform group-hover:translate-y-0.5" />
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Pagination Controls (shown after 40 resumes) */}
+              {totalResumes > RESUMES_PER_PAGE && (
+                <div className="py-3 px-5 border-t border-border bg-card/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="text-muted-foreground">
+                    Showing <span className="font-mono font-semibold text-foreground">{pageStartIndex + 1}–{Math.min(pageStartIndex + currentBatch.length, totalResumes)}</span> of <span className="font-mono font-semibold text-foreground">{totalResumes}</span> Resumes
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage <= 1}
+                      onClick={() => {
+                        setCurrentPage((p) => Math.max(1, p - 1));
+                        setIsUnfolded(false);
+                      }}
+                      className="text-xs gap-1 px-2.5 py-1"
+                    >
+                      <ChevronLeft size={14} /> Previous
+                    </Button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => {
+                          setCurrentPage(pageNum);
+                          setIsUnfolded(false);
+                        }}
+                        className={`w-7 h-7 rounded text-xs font-mono font-semibold transition-all ${
+                          pageNum === safePage
+                            ? "bg-primary text-white shadow-xs"
+                            : "hover:bg-secondary text-muted-foreground hover:text-foreground border border-transparent hover:border-border"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage >= totalPages}
+                      onClick={() => {
+                        setCurrentPage((p) => Math.min(totalPages, p + 1));
+                        setIsUnfolded(false);
+                      }}
+                      className="text-xs gap-1 px-2.5 py-1"
+                    >
+                      Next <ChevronRight size={14} />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardBody>
+      </Card>
+    );
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -305,60 +649,6 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
         </div>
       </div>
 
-      {/* Resume Selector Bar */}
-      <Card>
-        <CardHeader className="py-3 px-5 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Layers size={15} className="text-primary" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Select Resumes from History
-            </h3>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {selectedCompareIds.length} of {resumeHistory.length} selected (Min: 2)
-          </span>
-        </CardHeader>
-        <CardBody className="p-4">
-          <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-thin">
-            {resumeHistory.map((r: any, idx: number) => {
-              const resumeId = r.id || `hist-${idx}`;
-              const isSelected = selectedCompareIds.includes(resumeId);
-              return (
-                <div
-                  key={resumeId}
-                  onClick={() => toggleResume(resumeId)}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer select-none shrink-0 min-w-[220px] ${
-                    isSelected
-                      ? "border-primary bg-primary/10 shadow-sm"
-                      : "border-border hover:border-primary/40 hover:bg-secondary/40"
-                  }`}
-                >
-                  <div
-                    className="w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors"
-                    style={{
-                      borderColor: isSelected ? "var(--primary)" : "var(--border)",
-                      backgroundColor: isSelected ? "var(--primary)" : "transparent",
-                    }}
-                  >
-                    {isSelected && <CheckCircle2 size={11} className="text-white" />}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-foreground truncate">{r.filename || "Resume.pdf"}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{r.uploadedAt || "Recent"}</p>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <span className="font-mono text-xs font-bold text-primary">{r.atsScore ?? 80}</span>
-                    <span className="text-[10px] text-muted-foreground block">ATS</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardBody>
-      </Card>
-
       {/* Loading indicator */}
       {loading && (
         <div className="py-12 flex flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -377,32 +667,83 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
 
       {/* Empty State: Less than 2 selected */}
       {!loading && selectedCompareIds.length < 2 && (
-        <Card className="text-center py-12 px-6">
-          <CardBody className="max-w-md mx-auto space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-              <GitCompare size={28} />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">Select at least 2 resumes to compare</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Choose multiple resume versions from the selector bar above to generate side-by-side metric charts, skill intersection, and candidate gap breakdowns.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <Button onClick={selectTopThree} size="sm">
-                Compare Top 3 Resumes
-              </Button>
-              <Button variant="outline" onClick={selectAll} size="sm">
-                Compare All
-              </Button>
-            </div>
-          </CardBody>
-        </Card>
+        <div className="space-y-6 animate-fade-in">
+          <Card className="text-center py-10 px-6">
+            <CardBody className="max-w-md mx-auto space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                <GitCompare size={28} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Select at least 2 resumes to compare</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Choose 2 or more resume versions from the list below to generate the side-by-side comparison graph, skill intersection, and candidate gap breakdowns.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button onClick={selectTopThree} size="sm">
+                  Compare Top 3 Resumes
+                </Button>
+                <Button variant="outline" onClick={selectAll} size="sm">
+                  Compare All
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Resume Selection in List View */}
+          {renderResumeSelectionList()}
+        </div>
       )}
 
-      {/* Comparison Results */}
+      {/* Comparison Results - SHOWN FIRST */}
       {!loading && compareData && compareData.resumes && compareData.resumes.length >= 2 && (
         <div className="space-y-6 animate-fade-in">
+          {/* Comparative Metrics Chart - SHOWN FIRST */}
+          {chartData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Score & Skill Comparison</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Benchmark ATS Scores, Job Match percentages, and skill volumes across {compareData.resumes.length} resumes
+                    </p>
+                  </div>
+                  <Badge variant="primary">{compareData.resumes.length} Resumes Compared</Badge>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <div className="w-full h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 38, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+                      <Tooltip
+                        content={<CustomChartTooltip />}
+                        position={{ y: 2 }}
+                        allowEscapeViewBox={{ x: false, y: true }}
+                        cursor={{
+                          fill: "rgba(245, 158, 11, 0.05)",
+                          stroke: "rgba(245, 158, 11, 0.20)",
+                          strokeWidth: 1,
+                          strokeDasharray: "4 4",
+                          rx: 8,
+                          ry: 8,
+                        }}
+                        animationDuration={150}
+                      />
+                      <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
+                      <Bar dataKey="ATS" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={45} />
+                      <Bar dataKey="Job Match" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={45} />
+                      <Bar dataKey="Skills" fill="#38bdf8" radius={[4, 4, 0, 0]} maxBarSize={45} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
           {/* Winner Highlights Bar */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Top ATS */}
@@ -410,22 +751,22 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
               const winner = compareData.resumes.find((r: any) => r.id === compareData.bestAtsId) || compareData.resumes[0];
               return (
                 <div
-                  className="rounded-xl border border-primary/20 p-4 relative overflow-hidden"
+                  className="rounded-xl border border-amber-500/25 p-4 relative overflow-hidden"
                   style={{
-                    background: "linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(16,185,129,0.04) 100%)",
+                    background: "linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(251,191,36,0.03) 100%)",
                     backgroundColor: "var(--card)",
                   }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wide">
-                      <Trophy size={14} /> Top ATS Score
+                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-500 dark:text-amber-400 uppercase tracking-wide">
+                      <Trophy size={14} className="text-amber-500 dark:text-amber-400" /> Top ATS Score
                     </div>
-                    <Badge variant="primary">Winner</Badge>
+                    <Badge variant="warning">Winner</Badge>
                   </div>
                   <p className="text-base font-semibold text-foreground truncate">
                     {winner?.candidateName || winner?.filename}
                   </p>
-                  <p className="font-mono text-2xl font-bold text-primary mt-1">
+                  <p className="font-mono text-2xl font-bold text-amber-500 dark:text-amber-400 mt-1">
                     {winner?.atsScore}
                     <span className="text-xs font-normal text-muted-foreground ml-1">/100</span>
                   </p>
@@ -469,7 +810,7 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
                 <div
                   className="rounded-xl border border-sky-500/20 p-4 relative overflow-hidden"
                   style={{
-                    background: "linear-gradient(135deg, rgba(56,189,248,0.08) 0%, rgba(99,102,241,0.04) 100%)",
+                    background: "linear-gradient(135deg, rgba(56,189,248,0.08) 0%, rgba(14,165,233,0.03) 100%)",
                     backgroundColor: "var(--card)",
                   }}
                 >
@@ -477,7 +818,7 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
                     <div className="flex items-center gap-2 text-xs font-semibold text-sky-400 uppercase tracking-wide">
                       <Cpu size={14} /> Most Skills Detected
                     </div>
-                    <Badge variant="secondary">Broadest Stack</Badge>
+                    <Badge variant="info">Broadest Stack</Badge>
                   </div>
                   <p className="text-base font-semibold text-foreground truncate">
                     {winner?.candidateName || winner?.filename}
@@ -491,37 +832,8 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
             })()}
           </div>
 
-          {/* Comparative Metrics Chart */}
-          {chartData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">Score & Skill Comparison</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Benchmark ATS Scores, Job Match percentages, and skill volumes across {compareData.resumes.length} resumes
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <div className="w-full h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-                      <Tooltip content={<CustomChartTooltip />} />
-                      <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                      <Bar dataKey="ATS" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={45} />
-                      <Bar dataKey="Job Match" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={45} />
-                      <Bar dataKey="Skills" fill="#38bdf8" radius={[4, 4, 0, 0]} maxBarSize={45} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardBody>
-            </Card>
-          )}
+          {/* Resume Selection in List View - SHOWN AFTER COMPARISON GRAPH */}
+          {renderResumeSelectionList()}
 
           {/* Shared Skills Across ALL Selected Resumes */}
           {Array.isArray(compareData.sharedSkills) && compareData.sharedSkills.length > 0 && (
@@ -633,7 +945,7 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
                                   onClick={() => handlePreview(resume.id)}
                                   title="Preview inline"
                                   disabled={previewingId === resume.id}
-                                  className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                  className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                                 >
                                   {previewingId === resume.id ? (
                                     <Loader2 size={13} className="animate-spin text-primary" />
@@ -645,13 +957,28 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
                                   onClick={() => handleDownload(resume.id, resume.filename || "resume.pdf")}
                                   title="Download document"
                                   disabled={downloadingId === resume.id}
-                                  className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                  className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                                 >
                                   {downloadingId === resume.id ? (
                                     <Loader2 size={13} className="animate-spin text-primary" />
                                   ) : (
                                     <Download size={13} />
                                   )}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setResumeToDelete({
+                                      id: resume.id,
+                                      filename: resume.filename,
+                                      atsScore: resume.atsScore,
+                                      jobMatch: resume.jobMatch,
+                                      uploadedAt: resume.uploadedAt,
+                                    })
+                                  }
+                                  title="Delete resume"
+                                  className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 size={13} />
                                 </button>
                               </>
                             )}
@@ -665,7 +992,7 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
                         >
                           <div className="text-center">
                             <p className="text-[10px] text-muted-foreground uppercase font-semibold">ATS</p>
-                            <p className="font-mono text-lg font-bold text-primary">{resume.atsScore ?? 75}</p>
+                            <p className="font-mono text-lg font-bold text-amber-500 dark:text-amber-400">{resume.atsScore ?? 75}</p>
                           </div>
                           <div className="text-center">
                             <p className="text-[10px] text-muted-foreground uppercase font-semibold">Match</p>
@@ -712,14 +1039,14 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
                             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                               Unique Skills ({uniqueSkillsList.length})
                             </p>
-                            <span className="text-[10px] text-primary font-medium">Exclusive</span>
+                            <span className="text-[10px] text-sky-400 font-medium">Exclusive</span>
                           </div>
                           {uniqueSkillsList.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {uniqueSkillsList.slice(0, 8).map((s: string) => (
                                 <span
                                   key={s}
-                                  className="px-2 py-0.5 rounded text-[11px] font-medium border border-primary/25 bg-primary/10 text-primary"
+                                  className="px-2 py-0.5 rounded text-[11px] font-medium border border-sky-500/25 bg-sky-500/10 text-sky-400"
                                 >
                                   {s}
                                 </span>
@@ -857,6 +1184,18 @@ export default function ComparePage({ onNavigate }: ComparePageProps) {
           </div>
         </div>
       )}
+      {/* Translucent Delete Confirmation Modal (supports single and bulk multi-resume delete) */}
+      <DeleteResumeModal
+        isOpen={!!resumeToDelete || !!bulkResumesToDelete}
+        resume={resumeToDelete}
+        items={bulkResumesToDelete || undefined}
+        onClose={() => {
+          setResumeToDelete(null);
+          setBulkResumesToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

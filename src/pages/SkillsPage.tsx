@@ -6,14 +6,14 @@ import { useApp } from "../context/AppContext";
 const categories = ["All", "Programming", "Frontend", "Backend", "Database", "DevOps", "AI/ML", "Cloud", "Tools"];
 
 const categoryColors: Record<string, string> = {
-  Programming: "#6366f1",
+  Programming: "#3b82f6",
   Frontend: "#38bdf8",
   Backend: "#10b981",
-  Database: "#8b5cf6",
+  Database: "#0ea5e9",
   DevOps: "#f59e0b",
   "AI/ML": "#ec4899",
   Cloud: "#06b6d4",
-  Tools: "#a855f7",
+  Tools: "#64748b",
 };
 
 export default function SkillsPage() {
@@ -22,7 +22,7 @@ export default function SkillsPage() {
 
   const skillsByCategory = categories.slice(1).map((cat) => ({
     category: cat,
-    color: categoryColors[cat] ?? "#6366f1",
+    color: categoryColors[cat] ?? "#3b82f6",
     skills: technicalSkills.filter((s) => s.category === cat),
   }));
 
@@ -35,7 +35,7 @@ export default function SkillsPage() {
     l >= 85 ? "Expert" : l >= 70 ? "Proficient" : l >= 50 ? "Intermediate" : "Beginner";
 
   const getLevelColor = (l: number) =>
-    l >= 85 ? "#10b981" : l >= 70 ? "#6366f1" : l >= 50 ? "#f59e0b" : "#f43f5e";
+    l >= 85 ? "#10b981" : l >= 70 ? "#3b82f6" : l >= 50 ? "#f59e0b" : "#f43f5e";
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
@@ -49,9 +49,9 @@ export default function SkillsPage() {
       {/* Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Skills", value: technicalSkills.length + softSkills.length, color: "#6366f1" },
+          { label: "Total Skills", value: technicalSkills.length + softSkills.length, color: "#3b82f6" },
           { label: "Technical", value: technicalSkills.length, color: "#38bdf8" },
-          { label: "Soft Skills", value: softSkills.length, color: "#8b5cf6" },
+          { label: "Soft Skills", value: softSkills.length, color: "#06b6d4" },
           { label: "Missing", value: missingSkills.length, color: "#f59e0b" },
         ].map((s) => (
           <Card key={s.label}>
@@ -93,7 +93,7 @@ export default function SkillsPage() {
               <div key={skill.name} className="flex items-center gap-3">
                 <div
                   className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: categoryColors[skill.category] ?? "#6366f1" }}
+                  style={{ backgroundColor: categoryColors[skill.category] ?? "#3b82f6" }}
                 />
                 <span className="text-sm text-foreground font-mono w-28 shrink-0">{skill.name}</span>
                 <div className="flex-1">
@@ -122,7 +122,7 @@ export default function SkillsPage() {
                 <div key={skill.name} className="flex items-center gap-3">
                   <span className="text-xs text-foreground w-32 shrink-0">{skill.name}</span>
                   <div className="flex-1">
-                    <ProgressBar value={skill.level} color="#8b5cf6" height="h-1.5" animated />
+                    <ProgressBar value={skill.level} color="#06b6d4" height="h-1.5" animated />
                   </div>
                   <span className="font-mono text-xs text-muted-foreground w-8 text-right shrink-0">{skill.level}%</span>
                 </div>
@@ -236,10 +236,10 @@ export default function SkillsPage() {
         <CardBody>
           <div className="grid sm:grid-cols-4 gap-3">
             {[
-              { month: "Month 1", focus: "Docker Mastery", color: "#6366f1", status: "current" },
+              { month: "Month 1", focus: "Docker Mastery", color: "#3b82f6", status: "current" },
               { month: "Month 2", focus: "AWS Foundations", color: "#10b981", status: "upcoming" },
               { month: "Month 3", focus: "Kubernetes", color: "#38bdf8", status: "upcoming" },
-              { month: "Month 4", focus: "Terraform / IaC", color: "#8b5cf6", status: "upcoming" },
+              { month: "Month 4", focus: "Terraform / IaC", color: "#0ea5e9", status: "upcoming" },
             ].map((step, i) => (
               <div
                 key={i}

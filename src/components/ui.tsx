@@ -108,13 +108,15 @@ export function CardBody({ children, className = "" }: { children: React.ReactNo
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: "default" | "success" | "warning" | "danger" | "info" | "muted";
+  variant?: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "info" | "muted";
   size?: "sm" | "md";
 }
 
 export function Badge({ children, variant = "default", size = "sm" }: BadgeProps) {
   const variantClasses: Record<string, string> = {
-    default: "bg-primary/15 text-indigo-300 border border-primary/25 hover:border-primary/50",
+    default: "bg-primary/15 text-primary border border-primary/25 hover:border-primary/50",
+    primary: "bg-primary/15 text-primary border border-primary/25 hover:border-primary/50",
+    secondary: "bg-secondary text-secondary-foreground border border-border",
     success: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:border-emerald-500/50",
     warning: "bg-amber-500/15 text-amber-400 border border-amber-500/25 hover:border-amber-500/50",
     danger: "bg-rose-500/15 text-rose-400 border border-rose-500/25 hover:border-rose-500/50",
@@ -135,6 +137,8 @@ interface ProgressBarProps {
   value: number;
   max?: number;
   color?: string;
+  variant?: "primary" | "success" | "warning" | "danger" | "info";
+  size?: "sm" | "md" | "lg";
   className?: string;
   height?: string;
   animated?: boolean;
@@ -143,17 +147,33 @@ interface ProgressBarProps {
 export function ProgressBar({
   value,
   max = 100,
-  color = "#6366f1",
+  color,
+  variant,
+  size,
   className = "",
-  height = "h-1.5",
+  height,
   animated = true,
 }: ProgressBarProps) {
+  const variantColors: Record<string, string> = {
+    primary: "var(--primary)",
+    success: "#10b981",
+    warning: "#f59e0b",
+    danger: "#f43f5e",
+    info: "#38bdf8",
+  };
+  const sizeHeights: Record<string, string> = {
+    sm: "h-1.5",
+    md: "h-2",
+    lg: "h-3",
+  };
+  const effectiveColor = color || (variant ? variantColors[variant] : "#3b82f6");
+  const effectiveHeight = height || (size ? sizeHeights[size] : "h-1.5");
   const pct = Math.min(100, (value / max) * 100);
   return (
-    <div className={`w-full bg-secondary rounded-full overflow-hidden relative ${height} ${className}`}>
+    <div className={`w-full bg-secondary rounded-full overflow-hidden relative ${effectiveHeight} ${className}`}>
       <div
         className={`h-full rounded-full relative overflow-hidden ${animated ? "transition-all duration-700 ease-out" : ""}`}
-        style={{ width: `${pct}%`, backgroundColor: color }}
+        style={{ width: `${pct}%`, backgroundColor: effectiveColor }}
       >
         {animated && (
           <div
@@ -181,7 +201,7 @@ export function CircularScore({
   score,
   size = 120,
   strokeWidth = 8,
-  color = "#6366f1",
+  color = "#3b82f6",
   label,
   sublabel,
 }: CircularScoreProps) {
@@ -245,7 +265,7 @@ export function CircularScore({
 
 interface ButtonProps {
   children: React.ReactNode;
-  variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "success" | "outline";
   size?: "sm" | "md" | "lg";
   className?: string;
   onClick?: () => void;
@@ -253,6 +273,7 @@ interface ButtonProps {
   type?: "button" | "submit";
   icon?: React.ReactNode;
   fullWidth?: boolean;
+  title?: string;
 }
 
 export function Button({
@@ -265,10 +286,12 @@ export function Button({
   type = "button",
   icon,
   fullWidth,
+  title,
 }: ButtonProps) {
   const variantClasses: Record<string, string> = {
-    primary: "bg-primary hover:bg-indigo-500 text-white shadow-md shadow-primary/20 hover:shadow-primary/40",
+    primary: "bg-primary hover:bg-blue-600 text-white shadow-md shadow-primary/20 hover:shadow-primary/40",
     secondary: "bg-secondary hover:bg-secondary/80 text-secondary-foreground border border-border hover:border-primary/40",
+    outline: "bg-transparent hover:bg-secondary text-foreground border border-border hover:border-primary/40",
     ghost: "hover:bg-secondary text-muted-foreground hover:text-foreground",
     danger: "bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 hover:border-rose-500/40",
     success: "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/25 hover:border-emerald-500/40",
@@ -281,6 +304,7 @@ export function Button({
   return (
     <button
       type={type}
+      title={title}
       onClick={onClick}
       disabled={disabled}
       className={`group inline-flex items-center justify-center font-medium transition-all duration-200 interactive-tap ${variantClasses[variant]} ${sizeClasses[size]} ${fullWidth ? "w-full" : ""} disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
@@ -305,7 +329,7 @@ export function StatCard({
   label,
   value,
   sublabel,
-  color = "#6366f1",
+  color = "#3b82f6",
   icon,
   trend,
   stagger,
@@ -349,10 +373,10 @@ export function LiveStatusBadge({
   variant = "emerald",
 }: {
   text?: string;
-  variant?: "emerald" | "indigo";
+  variant?: "emerald" | "blue";
 }) {
   const isEmerald = variant === "emerald";
-  const bg = isEmerald ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" : "bg-primary/10 text-indigo-300 border-primary/25";
+  const bg = isEmerald ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/25" : "bg-primary/10 text-primary border-primary/25";
   const dotColor = isEmerald ? "bg-emerald-400" : "bg-primary";
 
   return (

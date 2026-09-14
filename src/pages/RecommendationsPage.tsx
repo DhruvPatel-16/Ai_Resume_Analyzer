@@ -16,7 +16,7 @@ const priorityConfig: Record<string, { color: string; bg: string; border: string
 
 const typeConfig: Record<string, { color: string; label: string }> = {
   "skill-gap": { color: "#f43f5e", label: "Skill Gap" },
-  content: { color: "#6366f1", label: "Content" },
+  content: { color: "#3b82f6", label: "Content" },
   structure: { color: "#10b981", label: "Structure" },
 };
 

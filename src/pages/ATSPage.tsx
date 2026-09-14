@@ -108,7 +108,7 @@ export default function ATSPage() {
       {/* Score summary */}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="flex flex-col items-center justify-center py-6">
-          <CircularScore score={Math.round(computed)} size={140} color="#6366f1" label="ATS" sublabel="/100" />
+          <CircularScore score={Math.round(computed)} size={140} color="#3b82f6" label="ATS" sublabel="/100" />
           <p className="text-sm font-medium text-foreground mt-3">Overall ATS Score</p>
           <p className="text-xs text-muted-foreground text-center mt-0.5 max-w-[160px]">
             Weighted average across 6 categories
@@ -175,7 +175,7 @@ export default function ATSPage() {
       {/* ATS Checks */}
       <div className="grid sm:grid-cols-2 gap-4">
         {atsChecks.map((group) => {
-          const passCount = group.checks.filter((c) => c.pass).length;
+          const passCount = group.checks.filter((c: any) => c.pass).length;
           const total = group.checks.length;
           const pct = Math.round((passCount / total) * 100);
           const statusColor = group.status === "pass" ? "#10b981" : "#f59e0b";
@@ -194,7 +194,7 @@ export default function ATSPage() {
                 </div>
               </CardHeader>
               <CardBody className="space-y-1.5 pt-0">
-                {group.checks.map((check) => (
+                {group.checks.map((check: any) => (
                   <div key={check.label} className="flex items-center gap-2 text-xs">
                     {check.pass ? (
                       <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />

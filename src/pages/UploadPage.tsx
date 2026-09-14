@@ -10,9 +10,9 @@ interface UploadPageProps {
 type UploadState = "idle" | "dragging" | "uploading" | "processing" | "complete" | "error";
 
 const processingSteps = [
-  { id: 1, label: "Extracting text from PDF/DOCX", icon: <FileText size={14} />, color: "#6366f1" },
+  { id: 1, label: "Extracting text from PDF/DOCX", icon: <FileText size={14} />, color: "#3b82f6" },
   { id: 2, label: "Cleaning and normalizing text", icon: <Cpu size={14} />, color: "#38bdf8" },
-  { id: 3, label: "Detecting resume sections", icon: <FileUp size={14} />, color: "#8b5cf6" },
+  { id: 3, label: "Detecting resume sections", icon: <FileUp size={14} />, color: "#0ea5e9" },
   { id: 4, label: "Extracting skills & entities", icon: <Cpu size={14} />, color: "#10b981" },
   { id: 5, label: "Running ATS analysis", icon: <Zap size={14} />, color: "#f59e0b" },
   { id: 6, label: "Generating AI recommendations", icon: <Lightbulb size={14} />, color: "#f43f5e" },
@@ -157,9 +157,9 @@ export default function UploadPage({ onNavigate }: UploadPageProps) {
             <div className="flex flex-col items-center gap-3">
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-inner group-hover:scale-110"
-                style={{ backgroundColor: state === "dragging" ? "rgba(99,102,241,0.25)" : "var(--muted)" }}
+                style={{ backgroundColor: state === "dragging" ? "rgba(59,130,246,0.25)" : "var(--muted)" }}
               >
-                <Upload size={28} className={state === "dragging" ? "animate-bounce" : ""} style={{ color: state === "dragging" ? "#6366f1" : "var(--muted-foreground)" }} />
+                <Upload size={28} className={state === "dragging" ? "animate-bounce" : ""} style={{ color: state === "dragging" ? "#3b82f6" : "var(--muted-foreground)" }} />
               </div>
               <div>
                 <p className="font-medium text-foreground mb-1">
@@ -198,7 +198,7 @@ export default function UploadPage({ onNavigate }: UploadPageProps) {
       {(state === "uploading" || state === "processing") && (
         <Card className="relative overflow-hidden border-primary/30 shadow-xl shadow-primary/10">
           {/* Animated Laser Scanning Beam */}
-          <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-indigo-400 to-transparent animate-scan-beam shadow-[0_0_15px_rgba(99,102,241,0.9)] pointer-events-none z-10" />
+          <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scan-beam shadow-[0_0_15px_rgba(59,130,246,0.9)] pointer-events-none z-10" />
 
           <CardBody className="space-y-5 relative z-0">
             <div className="flex items-start gap-3">
@@ -218,7 +218,7 @@ export default function UploadPage({ onNavigate }: UploadPageProps) {
                 </p>
                 <span className="font-mono text-xs text-primary font-semibold">{progress}%</span>
               </div>
-              <ProgressBar value={progress} color="#6366f1" height="h-2" animated />
+              <ProgressBar value={progress} color="#3b82f6" height="h-2" animated />
             </div>
 
             {state === "processing" && (

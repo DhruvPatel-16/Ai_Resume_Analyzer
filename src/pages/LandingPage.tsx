@@ -29,7 +29,7 @@ interface LandingPageProps {
 const features = [
   {
     icon: <Zap size={20} />,
-    color: "#6366f1",
+    color: "#3b82f6",
     title: "ATS Score Analysis",
     description: "Get a detailed ATS-style score breakdown across 6 weighted categories — skills, keywords, structure, and more.",
   },
@@ -53,7 +53,7 @@ const features = [
   },
   {
     icon: <FileText size={20} />,
-    color: "#8b5cf6",
+    color: "#0ea5e9",
     title: "Resume Improvement",
     description: "Transform weak bullet points into powerful achievement statements with AI rewrite suggestions.",
   },
@@ -70,7 +70,7 @@ const testimonials = [
     name: "Priya Sharma",
     role: "Software Engineer at Google",
     avatar: "PS",
-    color: "#6366f1",
+    color: "#3b82f6",
     text: "ResumeAI helped me identify that I was missing Kubernetes experience before applying to Google. Got the offer after adding a K8s project.",
   },
   {
@@ -139,7 +139,7 @@ export default function LandingPage({ onGetStarted, onLogin, theme, onToggleThem
 
         <div className="relative max-w-6xl mx-auto px-6 pt-20 pb-16">
           <div className="flex flex-col items-center text-center max-w-3xl mx-auto animate-fade-in-up">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs text-indigo-300 shadow-sm shadow-primary/10">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs text-primary shadow-sm shadow-primary/10">
               <Sparkles size={11} className="animate-spin text-primary" style={{ animationDuration: "6s" }} />
               Powered by NLP + LLM + Semantic Matching
             </div>
@@ -202,7 +202,7 @@ export default function LandingPage({ onGetStarted, onLogin, theme, onToggleThem
           {/* Dashboard screenshot mockup */}
           <div className="p-5 grid grid-cols-4 gap-4">
             {[
-              { label: "ATS Score", value: "84", color: "#6366f1", sub: "+8 from last version" },
+              { label: "ATS Score", value: "84", color: "#3b82f6", sub: "+8 from last version" },
               { label: "Job Match", value: "81%", color: "#10b981", sub: "Senior Backend Eng." },
               { label: "Skills Found", value: "20", color: "#38bdf8", sub: "12 technical · 8 soft" },
               { label: "Missing Skills", value: "6", color: "#f59e0b", sub: "2 high priority" },
@@ -216,10 +216,10 @@ export default function LandingPage({ onGetStarted, onLogin, theme, onToggleThem
             <div className="col-span-2 rounded-lg border border-border p-3.5" style={{ backgroundColor: "var(--muted)" }}>
               <p className="text-xs text-muted-foreground mb-2">ATS Score Breakdown</p>
               {[
-                { label: "Skills Match", score: 85, color: "#6366f1" },
+                { label: "Skills Match", score: 85, color: "#3b82f6" },
                 { label: "Keywords", score: 78, color: "#10b981" },
                 { label: "Experience", score: 88, color: "#38bdf8" },
-                { label: "Structure", score: 92, color: "#8b5cf6" },
+                { label: "Structure", score: 92, color: "#0ea5e9" },
               ].map((b) => (
                 <div key={b.label} className="flex items-center gap-2 mb-1.5">
                   <span className="text-xs text-muted-foreground w-24 shrink-0">{b.label}</span>

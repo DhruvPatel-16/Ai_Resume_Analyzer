@@ -68,7 +68,7 @@ export default function JobMatcherPage() {
     }
   };
 
-  const getScoreColor = (s: number) => s >= 80 ? "#10b981" : s >= 65 ? "#6366f1" : s >= 50 ? "#f59e0b" : "#f43f5e";
+  const getScoreColor = (s: number) => s >= 80 ? "#10b981" : s >= 65 ? "#3b82f6" : s >= 50 ? "#f59e0b" : "#f43f5e";
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
