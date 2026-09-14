@@ -190,7 +190,9 @@ export default function ATSPage() {
                   <span className="font-mono text-xs" style={{ color: statusColor }}>
                     {passCount}/{total}
                   </span>
-                  <ProgressBar value={pct} color={statusColor} className="w-16" />
+                  <div className="w-16 shrink-0">
+                    <ProgressBar value={pct} color={statusColor} />
+                  </div>
                 </div>
               </CardHeader>
               <CardBody className="space-y-1.5 pt-0">

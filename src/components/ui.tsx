@@ -168,9 +168,11 @@ export function ProgressBar({
   };
   const effectiveColor = color || (variant ? variantColors[variant] : "#3b82f6");
   const effectiveHeight = height || (size ? sizeHeights[size] : "h-1.5");
-  const pct = Math.min(100, (value / max) * 100);
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  const hasExplicitWidth = /\b(w-\S+|flex-\S+|max-w-\S+|min-w-\S+)/.test(className);
+  const defaultWidth = hasExplicitWidth ? "" : "w-full";
   return (
-    <div className={`w-full bg-secondary rounded-full overflow-hidden relative ${effectiveHeight} ${className}`}>
+    <div className={`${defaultWidth} bg-secondary rounded-full overflow-hidden relative ${effectiveHeight} ${className}`}>
       <div
         className={`h-full rounded-full relative overflow-hidden ${animated ? "transition-all duration-700 ease-out" : ""}`}
         style={{ width: `${pct}%`, backgroundColor: effectiveColor }}

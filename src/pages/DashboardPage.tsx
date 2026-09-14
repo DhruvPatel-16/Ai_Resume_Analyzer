@@ -368,7 +368,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </CardBody>
           </Card>
 
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Multi-Job Comparison</h3>
               <Badge variant="muted">6 roles</Badge>
@@ -377,7 +377,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               {multiJobComparison.slice(0, 4).map((j) => (
                 <div key={j.role} className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">{j.role}</span>
-                  <ProgressBar value={j.match} color={j.color} className="w-24 shrink-0" />
+                  <div className="w-20 sm:w-24 shrink-0">
+                    <ProgressBar value={j.match} color={j.color} height="h-1.5" />
+                  </div>
                   <span className="font-mono text-xs text-foreground w-8 text-right shrink-0">{j.match}%</span>
                 </div>
               ))}

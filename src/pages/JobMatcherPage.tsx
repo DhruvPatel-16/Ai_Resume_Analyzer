@@ -306,7 +306,7 @@ export default function JobMatcherPage() {
           </div>
 
           {/* Multi-job comparison */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Multi-Job Comparison</h3>
               <p className="text-xs text-muted-foreground">Your resume vs. 6 different roles</p>
@@ -332,14 +332,16 @@ export default function JobMatcherPage() {
                 </BarChart>
               </ResponsiveContainer>
 
-              <div className="mt-4 space-y-1.5">
+              <div className="mt-4 space-y-2">
                 {multiJobComparison.map((j) => (
-                  <div key={j.role} className="flex items-center gap-3 text-xs">
+                  <div key={j.role} className="flex items-center gap-2.5 text-xs">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: j.color }} />
-                    <span className="text-foreground flex-1 truncate">{j.role}</span>
-                    <span className="text-muted-foreground">{j.company}</span>
-                    <ProgressBar value={j.match} color={j.color} className="w-20 shrink-0" />
-                    <span className="font-mono text-foreground w-8 text-right shrink-0">{j.match}%</span>
+                    <span className="text-foreground font-medium truncate flex-1 min-w-0">{j.role}</span>
+                    <span className="text-muted-foreground text-[11px] shrink-0 w-20 sm:w-24 truncate hidden sm:inline">{j.company}</span>
+                    <div className="w-24 sm:w-32 shrink-0">
+                      <ProgressBar value={j.match} color={j.color} height="h-2" />
+                    </div>
+                    <span className="font-mono text-foreground font-semibold w-9 text-right shrink-0">{j.match}%</span>
                   </div>
                 ))}
               </div>
