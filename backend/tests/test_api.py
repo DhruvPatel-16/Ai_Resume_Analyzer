@@ -104,4 +104,27 @@ def test_compare_multiple_resumes():
     err_resp = client.post("/api/resumes/compare", json={"resume_ids": [r1]})
     assert err_resp.status_code == 400
 
+def test_batch_upload_resumes():
+    # Read two existing test resumes
+    import os
+    r1_path = os.path.join("Resume", "Alex_Chen_Resume.pdf")
+    r2_path = os.path.join("Resume", "Priya_Sharma_Resume.pdf")
+    
+    with open(r1_path, "rb") as f1, open(r2_path, "rb") as f2:
+        b1 = f1.read()
+        b2 = f2.read()
+
+    files = [
+        ("files", ("Alex_Chen_Resume.pdf", b1, "application/pdf")),
+        ("files", ("Priya_Sharma_Resume.pdf", b2, "application/pdf")),
+    ]
+    resp = client.post("/api/resumes/batch-upload", files=files)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 2
+    assert data["successful"] == 2
+    assert data["failed"] == 0
+    assert len(data["resumes"]) == 2
+    assert data["activeAnalysis"] is not None
+
 

@@ -205,6 +205,122 @@ async def upload_resume(
     analysis_data["previewUrl"] = f"/api/resumes/{resume.id}/preview"
     return analysis_data
 
+@router.post("/batch-upload")
+async def batch_upload_resumes(
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """
+    Accepts multiple PDF or DOCX resumes, processes each through the extraction,
+    NLP, and ATS scoring pipeline, and stores them in DB.
+    """
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No files provided for batch upload.",
+        )
+
+    user_id = current_user.id if current_user else None
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+
+    successful = []
+    failed = []
+    latest_analysis = None
+
+    for f in files:
+        filename = f.filename or "resume.pdf"
+        ext = os.path.splitext(filename)[1].lower()
+
+        if ext not in ALLOWED_EXTENSIONS:
+            failed.append({
+                "filename": filename,
+                "error": f"Unsupported format '{ext}'. Must be .pdf or .docx.",
+            })
+            continue
+
+        try:
+            file_bytes = await f.read()
+            if len(file_bytes) > MAX_FILE_SIZE:
+                failed.append({
+                    "filename": filename,
+                    "error": "File size exceeds 10MB limit.",
+                })
+                continue
+
+            analysis_data = process_resume_content(filename, file_bytes)
+
+            resume_id = str(uuid.uuid4())
+            saved_filename = f"{resume_id}_{os.path.basename(filename)}"
+            saved_file_path = os.path.join(settings.UPLOAD_DIR, saved_filename)
+            with open(saved_file_path, "wb") as out_f:
+                out_f.write(file_bytes)
+
+            resume = Resume(
+                id=resume_id,
+                user_id=user_id,
+                filename=filename,
+                file_type=ext.lstrip("."),
+                file_size=len(file_bytes),
+                file_path=saved_file_path,
+                extracted_text=analysis_data["extractedText"],
+                raw_data=analysis_data,
+                ats_score=float(analysis_data["atsScore"]),
+                is_active=False,
+            )
+            db.add(resume)
+            db.commit()
+            db.refresh(resume)
+
+            for s in analysis_data.get("technicalSkills", []):
+                db.add(ResumeSkill(
+                    resume_id=resume.id,
+                    name=s["name"],
+                    category=s["category"],
+                    confidence=s.get("confidence", 1.0),
+                    level=s.get("level", 75),
+                ))
+            db.commit()
+
+            analysis_data["id"] = resume.id
+            analysis_data["downloadUrl"] = f"/api/resumes/{resume.id}/download"
+            analysis_data["previewUrl"] = f"/api/resumes/{resume.id}/preview"
+
+            successful.append({
+                "id": resume.id,
+                "filename": filename,
+                "atsScore": int(analysis_data["atsScore"]),
+                "jobMatchScore": int(analysis_data.get("jobMatchScore", 75)),
+                "skillsCount": len(analysis_data.get("technicalSkills", [])) + len(analysis_data.get("softSkills", [])),
+                "name": analysis_data.get("personal", {}).get("name", "Candidate"),
+                "downloadUrl": analysis_data["downloadUrl"],
+                "previewUrl": analysis_data["previewUrl"],
+            })
+            latest_analysis = analysis_data
+
+        except Exception as e:
+            failed.append({
+                "filename": filename,
+                "error": str(e),
+            })
+
+    # Set the most recently uploaded valid resume as active
+    if successful and latest_analysis:
+        if user_id:
+            db.query(Resume).filter(Resume.user_id == user_id).update({"is_active": False})
+        latest_id = successful[-1]["id"]
+        db.query(Resume).filter(Resume.id == latest_id).update({"is_active": True})
+        db.commit()
+
+    return {
+        "total": len(files),
+        "successful": len(successful),
+        "failed": len(failed),
+        "resumes": successful,
+        "errors": failed,
+        "activeAnalysis": latest_analysis,
+    }
+
 def get_or_create_resume_file(resume: Resume, db: Session) -> Optional[str]:
     """
     Ensures an accessible binary file (.pdf or .docx) exists for download and preview.

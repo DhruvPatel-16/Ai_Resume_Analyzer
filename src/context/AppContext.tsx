@@ -36,6 +36,7 @@ interface AppContextType {
   register: (name: string, email: string, pass: string) => Promise<void>;
   logout: () => void;
   uploadResume: (file: File) => Promise<void>;
+  uploadBatchResumes: (files: File[]) => Promise<any>;
   useSampleResume: () => Promise<void>;
   analyzeJobMatch: (title: string, description: string, company?: string) => Promise<void>;
   improveBullet: (bullet: string) => Promise<{ original: string; improved: string; explanation: string }>;
@@ -221,6 +222,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const uploadBatchResumes = async (files: File[]) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.resumes.uploadBatch(files);
+      if (res.activeAnalysis) {
+        applyAnalysisData(res.activeAnalysis);
+      }
+      const list = await api.resumes.list();
+      if (list && list.length > 0) {
+        setResumeHistory(list);
+      }
+      return res;
+    } catch (err: any) {
+      setError(err.message || "Failed to upload resumes.");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const useSampleResume = async () => {
     setLoading(true);
     setError(null);
@@ -339,6 +361,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         register,
         logout,
         uploadResume,
+        uploadBatchResumes,
         useSampleResume,
         analyzeJobMatch,
         improveBullet,

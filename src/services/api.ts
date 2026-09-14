@@ -103,6 +103,32 @@ export const api = {
         body: formData,
       });
     },
+    uploadBatch: (files: File[]) => {
+      const formData = new FormData();
+      files.forEach((f) => {
+        formData.append("files", f);
+      });
+      return request<{
+        total: number;
+        successful: number;
+        failed: number;
+        resumes: Array<{
+          id: string;
+          filename: string;
+          atsScore: number;
+          jobMatchScore: number;
+          skillsCount: number;
+          name: string;
+          downloadUrl: string;
+          previewUrl: string;
+        }>;
+        errors: Array<{ filename: string; error: string }>;
+        activeAnalysis: any;
+      }>("/resumes/batch-upload", {
+        method: "POST",
+        body: formData,
+      });
+    },
     sample: () =>
       request<any>("/resumes/sample", {
         method: "POST",
