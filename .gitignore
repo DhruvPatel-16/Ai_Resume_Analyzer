@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+dist/
+build/
+.cache/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.db
+*.sqlite3
+resume_analyzer.db
+.venv/
+venv/
+ENV/
+
+# Vite & Bundler
+.vite/
+vite.config.*.timestamp-*
+*.tsbuildinfo
+*-debug.log*
+logs/
+*.log
+.tmp-*
+scratch/
+
+# Tooling & Editor
+.claude-replay.*
+.figma/
+.agents/
+.gemini/
+.DS_Store
+Thumbs.db

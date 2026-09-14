@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: resume_analyzer_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: resume_analyzer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: resume_analyzer_backend
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgrespassword@postgres:5432/resume_analyzer"
+      SECRET_KEY: "production_secret_key_change_in_real_env"
+      LLM_API_KEY: "${LLM_API_KEY}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-https://api.openai.com/v1}"
+      LLM_MODEL: "${LLM_MODEL:-gpt-4o-mini}"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: resume_analyzer_frontend
+    ports:
+      - "8443:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
