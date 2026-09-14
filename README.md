@@ -63,60 +63,109 @@ An end-to-end, production-grade intelligence platform that evaluates candidate r
 
 ---
 
-## Quick Start
+## 🚀 How to Run This Project
 
 ### Prerequisites
 
-- Node.js 20+ and `npm`
-- Python 3.11+
-- Virtualenv or Conda (recommended)
-
-### 1. Clone & Configure
-
-```bash
-git clone https://github.com/your-org/ai-resume-analyzer.git
-cd ai-resume-analyzer
-cp .env.example .env
-```
-
-### 2. Backend Setup
-
-```bash
-# Install dependencies
-pip install -r backend/requirements.txt
-
-# Run database migrations and start server
-python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-The Swagger API documentation will be available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
-
-### 3. Frontend Setup
-
-In a new terminal window:
-
-```bash
-# Install frontend packages
-npm install
-
-# Start Vite development server
-npm run dev
-```
-
-Open [http://localhost:8443](http://localhost:8443) (or your configured port) in your browser.
+| Tool | Minimum Version | Check Command |
+| :--- | :--- | :--- |
+| **Node.js** | `v20.0.0+` | `node -v` |
+| **npm** | `v10.0.0+` | `npm -v` |
+| **Python** | `v3.11+` | `python --version` |
+| **Git** | `v2.40+` | `git --version` |
 
 ---
 
-## Running with Docker
+### Method 1: Local Development (Recommended)
 
-You can launch the entire stack (FastAPI + React client) using Docker Compose:
+#### Step 1: Clone the Repository
+```bash
+git clone https://github.com/Sigmaboy69/Ai_Resume_Analyzer.git
+cd Ai_Resume_Analyzer
+```
+
+#### Step 2: Configure Environment Variables
+Copy the example environment file to `.env`:
+```bash
+# On Linux / macOS:
+cp .env.example .env
+
+# On Windows (PowerShell):
+Copy-Item .env.example .env
+
+# On Windows (Command Prompt):
+copy .env.example .env
+```
+
+#### Step 3: Start the Backend Service
+In your first terminal window:
 
 ```bash
+# 1. (Optional but recommended) Create and activate a virtual environment
+python -m venv .venv
+
+# Activate on Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# Or on Linux / macOS:
+source .venv/bin/activate
+
+# 2. Install backend dependencies
+pip install -r backend/requirements.txt
+
+# 3. Start the FastAPI backend server
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+> **Backend is running!**
+> - API Base URL: `http://127.0.0.1:8000`
+> - Interactive Swagger Docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+> - Health Check: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+
+#### Step 4: Start the Frontend Client
+In a **new / second terminal window**, navigate to the project directory:
+
+```bash
+# 1. Install frontend packages
+npm install
+
+# 2. Start the Vite development preview server
+npm run dev
+```
+
+> **Frontend is running!**
+> - Web Application: [http://localhost:8443](http://localhost:8443) (or the port displayed in your terminal)
+> - The frontend automatically proxies `/api/*` calls directly to the FastAPI server at `http://127.0.0.1:8000`.
+
+---
+
+### Method 2: Running with Docker (One-Command)
+
+If you have Docker and Docker Compose installed:
+
+```bash
+# Build and start both backend and frontend containers
 docker compose up --build
 ```
 
-- Web UI: `http://localhost:3000`
-- API Backend: `http://localhost:8000`
+- **Frontend Web UI**: `http://localhost:3000`
+- **Backend API**: `http://localhost:8000`
+- **API Documentation**: `http://localhost:8000/docs`
+
+To shut down:
+```bash
+docker compose down
+```
+
+---
+
+### Method 3: Generating Your Own ATS Resume
+
+You can compile and customize the included 1-page ATS-optimized resume:
+
+```bash
+python Resume/generate_resume.py
+```
+This generates `Dhruv_Resume.pdf` and a high-resolution preview image directly in the `Resume/` folder.
 
 ---
 
