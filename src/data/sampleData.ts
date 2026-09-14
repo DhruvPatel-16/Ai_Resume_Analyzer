@@ -260,6 +260,7 @@ export const bulletImprovements = [
 
 export const resumeHistory = [
   {
+    id: "sample-v1",
     filename: "Marcus_Vance_Resume_v1.pdf",
     uploadedAt: "Sep 08, 2026",
     atsScore: 68,
@@ -267,6 +268,7 @@ export const resumeHistory = [
     skills: 14,
   },
   {
+    id: "sample-v2",
     filename: "Marcus_Vance_Resume_v2.pdf",
     uploadedAt: "Sep 10, 2026",
     atsScore: 76,
@@ -274,6 +276,7 @@ export const resumeHistory = [
     skills: 16,
   },
   {
+    id: "sample-v3",
     filename: "Marcus_Vance_Resume_v3.pdf",
     uploadedAt: "Sep 11, 2026",
     atsScore: 80,
@@ -281,6 +284,7 @@ export const resumeHistory = [
     skills: 18,
   },
   {
+    id: "sample-v4",
     filename: "Marcus_Vance_Resume.pdf",
     uploadedAt: "Sep 12, 2026",
     atsScore: 84,

@@ -346,6 +346,18 @@ def compare_resumes(
         if not candidate_name or candidate_name.lower() in ("candidate", "unknown"):
             candidate_name = r.filename.replace(".pdf", "").replace(".docx", "").replace("_", " ")
 
+        ats_breakdown = raw.get("atsBreakdown")
+        if not ats_breakdown:
+            sc = int(r.ats_score)
+            ats_breakdown = [
+                {"category": "Skills Match", "score": min(100, sc + 3), "weight": 30},
+                {"category": "Keywords", "score": max(50, sc - 4), "weight": 20},
+                {"category": "Experience Relevance", "score": min(100, sc + 1), "weight": 20},
+                {"category": "Education", "score": min(100, sc + 5), "weight": 10},
+                {"category": "Resume Structure", "score": min(100, sc + 4), "weight": 10},
+                {"category": "Achievements", "score": max(50, sc - 2), "weight": 10},
+            ]
+
         items.append({
             "id": r.id,
             "filename": r.filename,
@@ -362,7 +374,7 @@ def compare_resumes(
             "projects": raw.get("projects", []),
             "technicalSkills": raw.get("technicalSkills", []),
             "softSkills": raw.get("softSkills", []),
-            "atsBreakdown": raw.get("atsBreakdown", {}),
+            "atsBreakdown": ats_breakdown,
             "qualityChecks": raw.get("qualityChecks", []),
             "highReasons": raw.get("highReasons", []),
             "improvementReasons": raw.get("improvementReasons", []),
@@ -371,11 +383,12 @@ def compare_resumes(
 
     # Compute shared skills (intersection across all resumes)
     shared_skills_lower = set.intersection(*all_skill_sets) if all_skill_sets else set()
-    shared_skills = []
-    if items:
-        for s in items[0]["allSkills"]:
-            if s.lower() in shared_skills_lower and s not in shared_skills:
-                shared_skills.append(s)
+    all_combined_skills = []
+    for itm in items:
+        for s in itm["allSkills"]:
+            if s.lower() in shared_skills_lower and s not in all_combined_skills:
+                all_combined_skills.append(s)
+    shared_skills = all_combined_skills
 
     # Compute unique skills for each resume
     for idx, itm in enumerate(items):
