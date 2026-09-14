@@ -144,6 +144,18 @@ export const api = {
       window.open(blobUrl, "_blank");
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
     },
+    compare: (resumeIds: string[]) =>
+      request<{
+        resumes: any[];
+        sharedSkills: string[];
+        bestAtsId: string;
+        bestMatchId: string;
+        mostSkillsId: string;
+        totalCompared: number;
+      }>("/resumes/compare", {
+        method: "POST",
+        body: JSON.stringify({ resume_ids: resumeIds }),
+      }),
   },
 
   jobs: {

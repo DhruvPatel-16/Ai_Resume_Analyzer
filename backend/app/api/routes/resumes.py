@@ -1,6 +1,7 @@
 import os
 import uuid
 from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -298,6 +299,104 @@ def list_resumes(
             "previewUrl": f"/api/resumes/{r.id}/preview",
         })
     return results
+
+class CompareRequest(BaseModel):
+    resume_ids: List[str]
+
+@router.post("/compare")
+def compare_resumes(
+    body: CompareRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Compares 2 or more resumes, computing comparative metrics,
+    shared vs unique skills, and category rankings.
+    """
+    if not body.resume_ids or len(body.resume_ids) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least 2 resume IDs are required for comparison.",
+        )
+
+    resumes = db.query(Resume).filter(Resume.id.in_(body.resume_ids)).all()
+    if len(resumes) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fewer than 2 valid resumes were found for the provided IDs.",
+        )
+
+    id_map = {r.id: r for r in resumes}
+    ordered_resumes = [id_map[rid] for rid in body.resume_ids if rid in id_map]
+
+    items = []
+    all_skill_sets = []
+
+    for r in ordered_resumes:
+        raw = r.raw_data or {}
+        tech_skills = [
+            s["name"] for s in raw.get("technicalSkills", []) if isinstance(s, dict) and "name" in s
+        ]
+        soft_skills = [
+            s["name"] for s in raw.get("softSkills", []) if isinstance(s, dict) and "name" in s
+        ]
+        combined_skills = list(dict.fromkeys(tech_skills + soft_skills))
+        all_skill_sets.append(set(s.lower() for s in combined_skills))
+
+        candidate_name = raw.get("personal", {}).get("name")
+        if not candidate_name or candidate_name.lower() in ("candidate", "unknown"):
+            candidate_name = r.filename.replace(".pdf", "").replace(".docx", "").replace("_", " ")
+
+        items.append({
+            "id": r.id,
+            "filename": r.filename,
+            "uploadedAt": r.created_at.strftime("%b %d, %Y"),
+            "atsScore": int(r.ats_score),
+            "jobMatch": min(max(int(r.ats_score * 0.95), 50), 98),
+            "skillsCount": len(combined_skills) if combined_skills else (len(r.skills) if r.skills else 15),
+            "active": r.is_active,
+            "downloadUrl": f"/api/resumes/{r.id}/download",
+            "previewUrl": f"/api/resumes/{r.id}/preview",
+            "candidateName": candidate_name,
+            "education": raw.get("education", []),
+            "experience": raw.get("experience", []),
+            "projects": raw.get("projects", []),
+            "technicalSkills": raw.get("technicalSkills", []),
+            "softSkills": raw.get("softSkills", []),
+            "atsBreakdown": raw.get("atsBreakdown", {}),
+            "qualityChecks": raw.get("qualityChecks", []),
+            "highReasons": raw.get("highReasons", []),
+            "improvementReasons": raw.get("improvementReasons", []),
+            "allSkills": combined_skills,
+        })
+
+    # Compute shared skills (intersection across all resumes)
+    shared_skills_lower = set.intersection(*all_skill_sets) if all_skill_sets else set()
+    shared_skills = []
+    if items:
+        for s in items[0]["allSkills"]:
+            if s.lower() in shared_skills_lower and s not in shared_skills:
+                shared_skills.append(s)
+
+    # Compute unique skills for each resume
+    for idx, itm in enumerate(items):
+        other_skills = set()
+        for o_idx, o_set in enumerate(all_skill_sets):
+            if o_idx != idx:
+                other_skills.update(o_set)
+        itm["uniqueSkills"] = [s for s in itm["allSkills"] if s.lower() not in other_skills]
+
+    best_ats_id = max(items, key=lambda x: x["atsScore"])["id"]
+    best_match_id = max(items, key=lambda x: x["jobMatch"])["id"]
+    most_skills_id = max(items, key=lambda x: len(x["allSkills"]))["id"]
+
+    return {
+        "resumes": items,
+        "sharedSkills": shared_skills,
+        "bestAtsId": best_ats_id,
+        "bestMatchId": best_match_id,
+        "mostSkillsId": most_skills_id,
+        "totalCompared": len(items),
+    }
 
 @router.get("/{resume_id}/analysis")
 def get_resume_analysis(resume_id: str, db: Session = Depends(get_db)):

@@ -86,3 +86,22 @@ def test_resume_download_and_preview():
     assert "inline" in pv.headers.get("content-disposition", "")
     assert len(pv.content) > 100
 
+def test_compare_multiple_resumes():
+    # 1. Seed two resumes
+    r1 = client.post("/api/resumes/sample").json()["id"]
+    r2 = client.post("/api/resumes/sample").json()["id"]
+
+    # 2. Test comparison with 2+ resumes
+    resp = client.post("/api/resumes/compare", json={"resume_ids": [r1, r2]})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["totalCompared"] == 2
+    assert len(data["resumes"]) == 2
+    assert "sharedSkills" in data
+    assert "bestAtsId" in data
+
+    # 3. Test validation error with less than 2 resumes
+    err_resp = client.post("/api/resumes/compare", json={"resume_ids": [r1]})
+    assert err_resp.status_code == 400
+
+

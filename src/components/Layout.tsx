@@ -19,6 +19,7 @@ import {
   Settings,
   Sparkles,
   KeyRound,
+  GitCompare,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { LiveStatusBadge } from "./ui";
@@ -33,7 +34,8 @@ export type Page =
   | "job-matcher"
   | "recommendations"
   | "improvement"
-  | "history";
+  | "history"
+  | "compare";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -55,6 +57,7 @@ const navItems: { id: Page; label: string; icon: React.ReactNode; badge?: string
   { id: "recommendations", label: "AI Recommendations", icon: <Lightbulb size={16} />, badge: "5" },
   { id: "improvement", label: "Resume Improvement", icon: <FileEdit size={16} /> },
   { id: "history", label: "History", icon: <History size={16} /> },
+  { id: "compare", label: "Compare", icon: <GitCompare size={16} /> },
 ];
 
 export default function Layout({ children, activePage, onNavigate, theme, onToggleTheme, onLogout }: LayoutProps) {

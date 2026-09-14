@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
 } from "recharts";
-import { FileText, TrendingUp, CheckCircle2, Trash2, Download, Eye, ArrowUp, Loader2 } from "lucide-react";
+import { FileText, TrendingUp, CheckCircle2, Trash2, Download, Eye, Loader2, GitCompare, ArrowRight } from "lucide-react";
 import { Card, CardBody, CardHeader, Badge, ProgressBar, Button } from "../components/ui";
 import { useApp } from "../context/AppContext";
 
@@ -22,9 +22,21 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function HistoryPage() {
-  const { resumeHistory, scoreHistory, deleteResume, downloadResume, previewResume, refreshHistory } = useApp();
-  const [selectedVersions, setSelectedVersions] = useState<number[]>([0, Math.max(0, resumeHistory.length - 1)]);
+interface HistoryPageProps {
+  onNavigate?: (page: string) => void;
+}
+
+export default function HistoryPage({ onNavigate }: HistoryPageProps) {
+  const {
+    resumeHistory,
+    scoreHistory,
+    deleteResume,
+    downloadResume,
+    previewResume,
+    refreshHistory,
+    selectedCompareIds,
+    setSelectedCompareIds,
+  } = useApp();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
 
@@ -63,15 +75,20 @@ export default function HistoryPage() {
     }
   };
 
-  const toggleVersion = (i: number) => {
-    setSelectedVersions((prev) =>
-      prev.includes(i) ? prev.filter((v) => v !== i) : prev.length < 2 ? [...prev, i] : [prev[1], i]
+  const toggleResumeSelection = (id?: string) => {
+    if (!id) return;
+    setSelectedCompareIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
-  const compareVersions = selectedVersions.length === 2 && selectedVersions[0] < resumeHistory.length && selectedVersions[1] < resumeHistory.length
-    ? selectedVersions.map((i) => resumeHistory[i])
-    : null;
+  const selectAllResumes = () => {
+    setSelectedCompareIds(resumeHistory.map((r: any) => r.id).filter(Boolean));
+  };
+
+  const clearSelection = () => {
+    setSelectedCompareIds([]);
+  };
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
@@ -150,23 +167,83 @@ export default function HistoryPage() {
         </CardBody>
       </Card>
 
+      {/* Selection action banner */}
+      {selectedCompareIds.length >= 2 && (
+        <div className="p-3.5 px-5 rounded-xl border border-primary/30 bg-primary/10 flex items-center justify-between flex-wrap gap-3 animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+              <GitCompare size={16} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {selectedCompareIds.length} Resumes Selected for Comparison
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Evaluate side-by-side ATS scores, skill overlaps, and candidate gaps
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => onNavigate && onNavigate("compare")}
+            className="flex items-center gap-1.5"
+          >
+            Open Compare Page <ArrowRight size={14} />
+          </Button>
+        </div>
+      )}
+
       {/* Version list */}
       <Card>
-        <CardHeader className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">Resume Versions</h3>
-          <p className="text-xs text-muted-foreground">Select 2 versions to compare</p>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Resume Versions ({resumeHistory.length})</h3>
+            <p className="text-xs text-muted-foreground">
+              Select 2 or more resumes to compare them side-by-side on the Compare page
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedCompareIds.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSelection}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear ({selectedCompareIds.length})
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={selectAllResumes}
+              className="text-xs"
+            >
+              Select All
+            </Button>
+            {selectedCompareIds.length >= 2 && (
+              <Button
+                size="sm"
+                onClick={() => onNavigate && onNavigate("compare")}
+                className="text-xs flex items-center gap-1.5"
+              >
+                <GitCompare size={13} />
+                Compare ({selectedCompareIds.length})
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardBody className="p-0">
           <div className="divide-y divide-border">
             {resumeHistory.map((r, i) => {
-              const isSelected = selectedVersions.includes(i);
+              const isSelected = selectedCompareIds.includes(r.id);
               return (
                 <div
-                  key={i}
+                  key={r.id || i}
                   className={`flex items-center gap-4 px-5 py-4 transition-colors cursor-pointer ${
                     isSelected ? "bg-primary/5" : "hover:bg-secondary/30"
                   }`}
-                  onClick={() => toggleVersion(i)}
+                  onClick={() => toggleResumeSelection(r.id)}
                 >
                   {/* Checkbox */}
                   <div
@@ -246,84 +323,6 @@ export default function HistoryPage() {
           </div>
         </CardBody>
       </Card>
-
-      {/* Comparison */}
-      {compareVersions && (
-        <Card className="animate-fade-in">
-          <CardHeader>
-            <h3 className="text-sm font-semibold text-foreground">
-              Version Comparison — {compareVersions[0].filename.split("_").pop()?.replace(".pdf", "")} vs {compareVersions[1].filename.split("_").pop()?.replace(".pdf", "")}
-            </h3>
-          </CardHeader>
-          <CardBody>
-            <div className="grid sm:grid-cols-2 gap-4 mb-5">
-              {compareVersions.map((v, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg p-4 border"
-                  style={{ backgroundColor: "var(--muted)", borderColor: i === 1 && v.active ? "rgba(16,185,129,0.3)" : "var(--border)" }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-medium text-foreground">{v.filename}</p>
-                    {v.active && <Badge variant="success">Current</Badge>}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <p className="font-mono text-lg font-semibold text-primary">{v.atsScore}</p>
-                      <p className="text-xs text-muted-foreground">ATS</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-lg font-semibold text-emerald-400">{v.jobMatch}%</p>
-                      <p className="text-xs text-muted-foreground">Match</p>
-                    </div>
-                    <div>
-                      <p className="font-mono text-lg font-semibold text-sky-400">{v.skills}</p>
-                      <p className="text-xs text-muted-foreground">Skills</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Delta */}
-            <div className="rounded-lg p-4 border border-emerald-500/20" style={{ backgroundColor: "rgba(16,185,129,0.06)" }}>
-              <p className="text-xs font-semibold text-emerald-400 mb-3 flex items-center gap-1.5">
-                <ArrowUp size={12} /> Improvements from {compareVersions[0].filename.split("_").pop()?.replace(".pdf", "")} to {compareVersions[1].filename.split("_").pop()?.replace(".pdf", "")}
-              </p>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {[
-                  {
-                    label: "ATS Score",
-                    delta: compareVersions[1].atsScore - compareVersions[0].atsScore,
-                    from: compareVersions[0].atsScore,
-                    to: compareVersions[1].atsScore,
-                  },
-                  {
-                    label: "Job Match",
-                    delta: compareVersions[1].jobMatch - compareVersions[0].jobMatch,
-                    from: `${compareVersions[0].jobMatch}%`,
-                    to: `${compareVersions[1].jobMatch}%`,
-                  },
-                  {
-                    label: "Skills",
-                    delta: compareVersions[1].skills - compareVersions[0].skills,
-                    from: compareVersions[0].skills,
-                    to: compareVersions[1].skills,
-                  },
-                ].map((m) => (
-                  <div key={m.label} className="text-center">
-                    <p className="text-xs text-muted-foreground mb-0.5">{m.label}</p>
-                    <p className="text-xs text-muted-foreground">{m.from} → {m.to}</p>
-                    <p className="font-mono text-base font-semibold text-emerald-400 mt-0.5">
-                      {m.delta > 0 ? "+" : ""}{m.delta}{typeof m.delta === "number" && m.label === "Job Match" ? "%" : ""}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      )}
     </div>
   );
 }

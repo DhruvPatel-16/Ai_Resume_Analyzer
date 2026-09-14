@@ -12,6 +12,7 @@ import JobMatcherPage from "./pages/JobMatcherPage";
 import RecommendationsPage from "./pages/RecommendationsPage";
 import ImprovementPage from "./pages/ImprovementPage";
 import HistoryPage from "./pages/HistoryPage";
+import ComparePage from "./pages/ComparePage";
 
 import { AppProvider, useApp } from "./context/AppContext";
 
@@ -82,7 +83,8 @@ function MainApp() {
     "job-matcher": <JobMatcherPage />,
     recommendations: <RecommendationsPage />,
     improvement: <ImprovementPage />,
-    history: <HistoryPage />,
+    history: <HistoryPage onNavigate={navigate} />,
+    compare: <ComparePage onNavigate={navigate} />,
   };
 
   return (

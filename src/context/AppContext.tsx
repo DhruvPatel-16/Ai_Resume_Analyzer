@@ -43,6 +43,9 @@ interface AppContextType {
   downloadResume: (id: string, filename?: string) => Promise<void>;
   previewResume: (id: string) => Promise<void>;
   refreshHistory: () => Promise<void>;
+  selectedCompareIds: string[];
+  setSelectedCompareIds: React.Dispatch<React.SetStateAction<string[]>>;
+  compareResumes: (ids: string[]) => Promise<any>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -71,6 +74,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [bulletImprovements, setBulletImprovements] = useState(sample.bulletImprovements);
   const [resumeHistory, setResumeHistory] = useState(sample.resumeHistory);
   const [scoreHistory, setScoreHistory] = useState(sample.scoreHistory);
+  const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
 
   // Check existing session on mount
   useEffect(() => {
@@ -303,6 +307,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await api.resumes.preview(id);
   };
 
+  const compareResumes = async (ids: string[]) => {
+    return await api.resumes.compare(ids);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -338,6 +346,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         downloadResume,
         previewResume,
         refreshHistory,
+        selectedCompareIds,
+        setSelectedCompareIds,
+        compareResumes,
       }}
     >
       {children}
