@@ -40,6 +40,9 @@ interface AppContextType {
   analyzeJobMatch: (title: string, description: string, company?: string) => Promise<void>;
   improveBullet: (bullet: string) => Promise<{ original: string; improved: string; explanation: string }>;
   deleteResume: (id: string) => Promise<void>;
+  downloadResume: (id: string, filename?: string) => Promise<void>;
+  previewResume: (id: string) => Promise<void>;
+  refreshHistory: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -87,14 +90,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Token invalid or backend offline, fall back to guest
       }
 
-      // Check if backend has recent active resume
+      // Check if backend has recent active resume & sync history
       try {
-        const dash = await api.dashboard.get();
-        if (dash.hasResume && dash.activeAnalysis) {
+        const [dash, list] = await Promise.all([
+          api.dashboard.get().catch(() => null),
+          api.resumes.list().catch(() => []),
+        ]);
+        if (dash && dash.hasResume && dash.activeAnalysis) {
           applyAnalysisData(dash.activeAnalysis);
           if (dash.scoreHistory && dash.scoreHistory.length > 0) {
             setScoreHistory(dash.scoreHistory);
           }
+        }
+        if (list && list.length > 0) {
+          setResumeHistory(list);
         }
       } catch {
         // Backend not ready yet or offline
@@ -275,6 +284,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const refreshHistory = async () => {
+    try {
+      const list = await api.resumes.list();
+      if (list && list.length > 0) {
+        setResumeHistory(list);
+      }
+    } catch (err: any) {
+      console.error("Failed to refresh resume history", err);
+    }
+  };
+
+  const downloadResume = async (id: string, filename?: string) => {
+    await api.resumes.download(id, filename);
+  };
+
+  const previewResume = async (id: string) => {
+    await api.resumes.preview(id);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -307,6 +335,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         analyzeJobMatch,
         improveBullet,
         deleteResume,
+        downloadResume,
+        previewResume,
+        refreshHistory,
       }}
     >
       {children}

@@ -37,6 +37,7 @@ class Resume(Base):
     filename = Column(String(255), nullable=False)
     file_type = Column(String(50), nullable=False)
     file_size = Column(Integer, default=0)
+    file_path = Column(String(500), nullable=True)
     extracted_text = Column(Text, nullable=False)
     raw_data = Column(JSON, nullable=True)  # Stores parsed sections, contact, education, experience, etc.
     ats_score = Column(Float, default=0.0)

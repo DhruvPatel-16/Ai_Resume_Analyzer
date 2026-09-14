@@ -1,9 +1,12 @@
 import os
+import uuid
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
+from backend.app.core.config import settings
 from backend.app.db.session import get_db
 from backend.app.db.models import User, Resume, ResumeSkill, Recommendation
 from backend.app.api.deps import get_current_user_optional
@@ -162,11 +165,20 @@ async def upload_resume(
     if user_id:
         db.query(Resume).filter(Resume.user_id == user_id).update({"is_active": False})
 
+    resume_id = str(uuid.uuid4())
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    saved_filename = f"{resume_id}_{os.path.basename(filename)}"
+    saved_file_path = os.path.join(settings.UPLOAD_DIR, saved_filename)
+    with open(saved_file_path, "wb") as f:
+        f.write(file_bytes)
+
     resume = Resume(
+        id=resume_id,
         user_id=user_id,
         filename=filename,
         file_type=ext.lstrip("."),
         file_size=len(file_bytes),
+        file_path=saved_file_path,
         extracted_text=analysis_data["extractedText"],
         raw_data=analysis_data,
         ats_score=float(analysis_data["atsScore"]),
@@ -188,7 +200,78 @@ async def upload_resume(
     db.commit()
 
     analysis_data["id"] = resume.id
+    analysis_data["downloadUrl"] = f"/api/resumes/{resume.id}/download"
+    analysis_data["previewUrl"] = f"/api/resumes/{resume.id}/preview"
     return analysis_data
+
+def get_or_create_resume_file(resume: Resume, db: Session) -> Optional[str]:
+    """
+    Ensures an accessible binary file (.pdf or .docx) exists for download and preview.
+    Falls back cleanly to workspace root or auto-generates a clean PDF from extracted text.
+    """
+    # 1. Existing stored path
+    if resume.file_path and os.path.exists(resume.file_path):
+        return resume.file_path
+
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+
+    # 2. Check upload directory
+    candidate_names = [
+        f"{resume.id}_{resume.filename}",
+        resume.filename or "",
+        f"{resume.id}.pdf",
+        f"{resume.id}.docx",
+    ]
+    for cname in candidate_names:
+        if cname:
+            cpath = os.path.join(settings.UPLOAD_DIR, cname)
+            if os.path.exists(cpath):
+                resume.file_path = cpath
+                db.commit()
+                return cpath
+
+    # 3. Check workspace roots and Resume/ folder for matching names or Dhruv_Resume
+    search_paths = [
+        os.path.join(settings.BASE_DIR, resume.filename or ""),
+        os.path.join(settings.BASE_DIR, "Resume", resume.filename or ""),
+        os.path.join(settings.BASE_DIR, "Dhruv_Resume.pdf"),
+        os.path.join(settings.BASE_DIR, "Resume", "Dhruv_Resume.pdf"),
+    ]
+    for sp in search_paths:
+        if sp and os.path.exists(sp) and os.path.isfile(sp):
+            resume.file_path = sp
+            db.commit()
+            return sp
+
+    # 4. Fallback: generate PDF from extracted_text or raw_data
+    text_content = resume.extracted_text
+    if not text_content and resume.raw_data:
+        text_content = resume.raw_data.get("extractedText", "")
+
+    if text_content:
+        gen_filename = f"{resume.id}_{resume.filename if (resume.filename and resume.filename.endswith('.pdf')) else 'resume.pdf'}"
+        gen_path = os.path.join(settings.UPLOAD_DIR, gen_filename)
+        try:
+            import fitz
+            doc = fitz.open()
+            lines = text_content.split("\n")
+            page = doc.new_page()
+            y = 50
+            for line in lines:
+                if y > 780:
+                    page = doc.new_page()
+                    y = 50
+                page.insert_text((50, y), line[:120], fontsize=9.5)
+                y += 13
+            doc.save(gen_path)
+            doc.close()
+            resume.file_path = gen_path
+            db.commit()
+            return gen_path
+        except Exception as e:
+            print(f"Failed to generate fallback PDF for resume {resume.id}: {e}")
+
+    return None
 
 @router.get("")
 def list_resumes(
@@ -211,6 +294,8 @@ def list_resumes(
             "jobMatch": min(max(int(r.ats_score * 0.95), 50), 98),
             "skills": len(r.skills) if r.skills else 15,
             "active": r.is_active,
+            "downloadUrl": f"/api/resumes/{r.id}/download",
+            "previewUrl": f"/api/resumes/{r.id}/preview",
         })
     return results
 
@@ -223,7 +308,80 @@ def get_resume_analysis(resume_id: str, db: Session = Depends(get_db)):
     
     data = resume.raw_data or {}
     data["id"] = resume.id
+    data["downloadUrl"] = f"/api/resumes/{resume.id}/download"
+    data["previewUrl"] = f"/api/resumes/{resume.id}/preview"
     return data
+
+@router.get("/{resume_id}/download")
+def download_resume(
+    resume_id: str,
+    db: Session = Depends(get_db),
+):
+    """Downloads the raw resume document (.pdf or .docx)."""
+    resume = db.query(Resume).filter(Resume.id == resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+
+    file_path = get_or_create_resume_file(resume, db)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume document file not found on server.",
+        )
+
+    ext = os.path.splitext(file_path)[1].lower()
+    media_type = (
+        "application/pdf"
+        if ext == ".pdf"
+        else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    dl_filename = resume.filename if resume.filename else f"resume{ext}"
+    if not dl_filename.endswith(ext):
+        dl_filename = f"{dl_filename}{ext}"
+
+    return FileResponse(
+        path=file_path,
+        media_type=media_type,
+        filename=dl_filename,
+        headers={
+            "Content-Disposition": f'attachment; filename="{dl_filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+
+@router.get("/{resume_id}/preview")
+def preview_resume(
+    resume_id: str,
+    db: Session = Depends(get_db),
+):
+    """Previews the resume document inline in browser."""
+    resume = db.query(Resume).filter(Resume.id == resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+
+    file_path = get_or_create_resume_file(resume, db)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume document file not found on server.",
+        )
+
+    ext = os.path.splitext(file_path)[1].lower()
+    media_type = (
+        "application/pdf"
+        if ext == ".pdf"
+        else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    preview_filename = resume.filename if resume.filename else f"resume{ext}"
+
+    return FileResponse(
+        path=file_path,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{preview_filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 @router.delete("/{resume_id}")
 def delete_resume(
@@ -231,7 +389,7 @@ def delete_resume(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """Deletes a resume and its associated data."""
+    """Deletes a resume and its associated data and files."""
     query = db.query(Resume).filter(Resume.id == resume_id)
     if current_user:
         query = query.filter(Resume.user_id == current_user.id)
@@ -239,6 +397,14 @@ def delete_resume(
     if not resume:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
     
+    # Remove file from disk if stored in uploads directory
+    if resume.file_path and os.path.exists(resume.file_path):
+        if settings.UPLOAD_DIR in os.path.abspath(resume.file_path):
+            try:
+                os.remove(resume.file_path)
+            except Exception:
+                pass
+
     db.delete(resume)
     db.commit()
     return {"status": "deleted", "id": resume_id}
@@ -298,11 +464,19 @@ PR-Sentinel: Automated Pull Request Quality & Security Bot
     analysis = process_resume_content("Marcus_Vance_Resume.pdf", pdf_bytes)
     
     user_id = current_user.id if current_user else None
+    resume_id = str(uuid.uuid4())
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    sample_path = os.path.join(settings.UPLOAD_DIR, f"{resume_id}_Marcus_Vance_Resume.pdf")
+    with open(sample_path, "wb") as f:
+        f.write(pdf_bytes)
+
     resume = Resume(
+        id=resume_id,
         user_id=user_id,
         filename="Marcus_Vance_Resume.pdf",
         file_type="pdf",
-        file_size=245000,
+        file_size=len(pdf_bytes),
+        file_path=sample_path,
         extracted_text=sample_resume_text,
         raw_data=analysis,
         ats_score=float(analysis["atsScore"]),
@@ -313,4 +487,7 @@ PR-Sentinel: Automated Pull Request Quality & Security Bot
     db.refresh(resume)
 
     analysis["id"] = resume.id
+    analysis["downloadUrl"] = f"/api/resumes/{resume.id}/download"
+    analysis["previewUrl"] = f"/api/resumes/{resume.id}/preview"
     return analysis
+

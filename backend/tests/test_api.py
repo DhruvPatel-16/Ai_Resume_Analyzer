@@ -65,3 +65,24 @@ def test_bullet_improver_endpoint():
     assert "improved" in data
     assert "explanation" in data
     assert data["improved"] != ""
+
+def test_resume_download_and_preview():
+    # 1. Seed a sample resume
+    res = client.post("/api/resumes/sample")
+    assert res.status_code == 200
+    resume_id = res.json()["id"]
+
+    # 2. Test download
+    dl = client.get(f"/api/resumes/{resume_id}/download")
+    assert dl.status_code == 200
+    assert dl.headers["content-type"] == "application/pdf"
+    assert "attachment" in dl.headers.get("content-disposition", "")
+    assert len(dl.content) > 100
+
+    # 3. Test preview
+    pv = client.get(f"/api/resumes/{resume_id}/preview")
+    assert pv.status_code == 200
+    assert pv.headers["content-type"] == "application/pdf"
+    assert "inline" in pv.headers.get("content-disposition", "")
+    assert len(pv.content) > 100
+

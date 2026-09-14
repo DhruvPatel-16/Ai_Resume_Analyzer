@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
 } from "recharts";
-import { FileText, TrendingUp, CheckCircle2, Trash2, Download, Eye, ArrowUp } from "lucide-react";
+import { FileText, TrendingUp, CheckCircle2, Trash2, Download, Eye, ArrowUp, Loader2 } from "lucide-react";
 import { Card, CardBody, CardHeader, Badge, ProgressBar, Button } from "../components/ui";
 import { useApp } from "../context/AppContext";
 
@@ -23,8 +23,45 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function HistoryPage() {
-  const { resumeHistory, scoreHistory, deleteResume } = useApp();
+  const { resumeHistory, scoreHistory, deleteResume, downloadResume, previewResume, refreshHistory } = useApp();
   const [selectedVersions, setSelectedVersions] = useState<number[]>([0, Math.max(0, resumeHistory.length - 1)]);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    refreshHistory();
+  }, []);
+
+  const handleDownload = async (e: React.MouseEvent, r: any) => {
+    e.stopPropagation();
+    if (!r.id) {
+      window.open("/api/resumes/sample", "_blank");
+      return;
+    }
+    try {
+      setDownloadingId(r.id);
+      await downloadResume(r.id, r.filename || "resume.pdf");
+    } catch (err: any) {
+      console.error("Download failed:", err);
+      window.open(`/api/resumes/${r.id}/download`, "_blank");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handlePreview = async (e: React.MouseEvent, r: any) => {
+    e.stopPropagation();
+    if (!r.id) return;
+    try {
+      setPreviewingId(r.id);
+      await previewResume(r.id);
+    } catch (err: any) {
+      console.error("Preview failed:", err);
+      window.open(`/api/resumes/${r.id}/preview`, "_blank");
+    } finally {
+      setPreviewingId(null);
+    }
+  };
 
   const toggleVersion = (i: number) => {
     setSelectedVersions((prev) =>
@@ -166,11 +203,29 @@ export default function HistoryPage() {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
-                    <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" onClick={(e) => e.stopPropagation()}>
-                      <Eye size={13} />
+                    <button
+                      className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                      onClick={(e) => handlePreview(e, r)}
+                      title="Preview resume inline"
+                      disabled={previewingId === (r as any).id}
+                    >
+                      {previewingId === (r as any).id ? (
+                        <Loader2 size={13} className="animate-spin text-primary" />
+                      ) : (
+                        <Eye size={13} />
+                      )}
                     </button>
-                    <button className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" onClick={(e) => e.stopPropagation()}>
-                      <Download size={13} />
+                    <button
+                      className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                      onClick={(e) => handleDownload(e, r)}
+                      title="Download resume file"
+                      disabled={downloadingId === (r as any).id}
+                    >
+                      {downloadingId === (r as any).id ? (
+                        <Loader2 size={13} className="animate-spin text-primary" />
+                      ) : (
+                        <Download size={13} />
+                      )}
                     </button>
                     {!r.active && (
                       <button

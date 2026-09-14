@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     ]
     
     MAX_FILE_SIZE_MB: int = 10
+    BASE_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    UPLOAD_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 
     model_config = {"env_file": ".env", "extra": "allow"}
 
