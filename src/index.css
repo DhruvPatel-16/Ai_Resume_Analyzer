@@ -32,7 +32,7 @@
   --foreground: #e2e8f0;
   --card: #141720;
   --card-foreground: #e2e8f0;
-  --primary: #6366f1;
+  --primary: #3b82f6;
   --primary-foreground: #ffffff;
   --secondary: #1e2235;
   --secondary-foreground: #94a3b8;
@@ -41,7 +41,7 @@
   --accent: #10b981;
   --accent-foreground: #ffffff;
   --border: #1e2235;
-  --ring: #6366f1;
+  --ring: #3b82f6;
   --radius: 8px;
 
   --emerald: #10b981;
@@ -56,7 +56,7 @@
   --foreground: #e2e8f0;
   --card: #141720;
   --card-foreground: #e2e8f0;
-  --primary: #6366f1;
+  --primary: #3b82f6;
   --primary-foreground: #ffffff;
   --secondary: #1e2235;
   --secondary-foreground: #94a3b8;
@@ -65,7 +65,7 @@
   --accent: #10b981;
   --accent-foreground: #ffffff;
   --border: #1e2235;
-  --ring: #6366f1;
+  --ring: #3b82f6;
   --radius: 8px;
 }
 
@@ -74,7 +74,7 @@
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
-  --primary: #6366f1;
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
   --secondary-foreground: #475569;
@@ -83,7 +83,7 @@
   --accent: #10b981;
   --accent-foreground: #ffffff;
   --border: #e2e8f0;
-  --ring: #6366f1;
+  --ring: #2563eb;
   --radius: 8px;
 }
 
@@ -93,14 +93,22 @@
 
 html {
   scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
+  height: 100%;
+  margin: 0;
   background-color: var(--background);
   color: var(--foreground);
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+  min-height: 100%;
 }
 
 ::-webkit-scrollbar {
@@ -193,8 +201,14 @@ body {
   50% { filter: drop-shadow(0 0 16px rgba(99, 102, 241, 0.55)); }
 }
 
+@keyframes popScale {
+  0% { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* Living animation utility classes */
 .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-pop-in { animation: popScale 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-fade-in-up { animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-slide-in { animation: slideIn 0.3s ease forwards; }
 .animate-pulse-glow { animation: pulse-glow 2.2s ease-in-out infinite; }
@@ -263,7 +277,7 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.4), rgba(16,185,129,0.2), transparent);
+  background: linear-gradient(135deg, rgba(59,130,246,0.4), rgba(16,185,129,0.2), transparent);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -277,10 +291,10 @@ body {
 }
 
 .sidebar-item-active {
-  background: rgba(99, 102, 241, 0.14);
-  color: #818cf8;
-  border-left: 2px solid #6366f1;
-  box-shadow: inset 4px 0 12px -3px rgba(99, 102, 241, 0.25);
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border-left: 2px solid #3b82f6;
+  box-shadow: inset 4px 0 12px -3px rgba(59, 130, 246, 0.25);
 }
 
 .sidebar-item {
@@ -302,3 +316,66 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Recharts translucent hover cursor & glassy blur effect */
+.recharts-tooltip-cursor {
+  fill: rgba(99, 102, 241, 0.05) !important;
+  stroke: rgba(99, 102, 241, 0.18) !important;
+  stroke-width: 1px !important;
+  stroke-dasharray: 4 4 !important;
+  rx: 8px !important;
+  ry: 8px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.recharts-wrapper .recharts-tooltip-wrapper {
+  z-index: 50 !important;
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Translucent Chart Tooltip that adapts cleanly to Light and Dark Mode */
+.chart-tooltip-glass {
+  background-color: rgba(20, 23, 32, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+.light .chart-tooltip-glass,
+html.light .chart-tooltip-glass,
+.light.min-h-screen .chart-tooltip-glass {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  color: #0f172a !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.16), 0 4px 16px -2px rgba(0, 0, 0, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+.light .chart-tooltip-glass .text-foreground,
+html.light .chart-tooltip-glass .text-foreground,
+.light.min-h-screen .chart-tooltip-glass .text-foreground {
+  color: #0f172a !important;
+}
+
+.light .chart-tooltip-glass .text-muted-foreground,
+html.light .chart-tooltip-glass .text-muted-foreground,
+.light.min-h-screen .chart-tooltip-glass .text-muted-foreground {
+  color: #475569 !important;
+}
+
+.light .chart-tooltip-glass .border-b,
+html.light .chart-tooltip-glass .border-b,
+.light.min-h-screen .chart-tooltip-glass .border-b {
+  border-bottom-color: rgba(226, 232, 240, 0.95) !important;
+}
+
+.light .recharts-tooltip-cursor,
+html.light .recharts-tooltip-cursor {
+  fill: rgba(245, 158, 11, 0.06) !important;
+  stroke: rgba(245, 158, 11, 0.22) !important;
+}
+
+

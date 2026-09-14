@@ -175,10 +175,10 @@ export default function ImprovementPage() {
         </CardHeader>
         <CardBody className="grid sm:grid-cols-2 gap-3">
           {[
-            { tip: "Start each bullet with a strong action verb: Developed, Engineered, Optimized, Led, Built", color: "#6366f1" },
+            { tip: "Start each bullet with a strong action verb: Developed, Engineered, Optimized, Led, Built", color: "#3b82f6" },
             { tip: "Include technology names: React, Python, PostgreSQL — not generic terms like 'web framework'", color: "#10b981" },
             { tip: "Add measurable impact wherever real data exists: 500+ users, 45% improvement, 3 teams", color: "#38bdf8" },
-            { tip: "Keep bullets to 1–2 lines. Remove filler words like 'responsible for' and 'helped with'", color: "#8b5cf6" },
+            { tip: "Keep bullets to 1–2 lines. Remove filler words like 'responsible for' and 'helped with'", color: "#0ea5e9" },
             { tip: "Match the job description language. If the JD says 'microservices', use that word if accurate", color: "#f59e0b" },
             { tip: "Never invent metrics. 'I increased performance' without a number is better than a false percentage", color: "#f43f5e" },
           ].map((t, i) => (

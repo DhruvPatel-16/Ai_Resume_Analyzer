@@ -101,7 +101,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             label: "ATS Score",
             value: resumeData.atsScore,
             sublabel: "↑ +4 from v3",
-            color: "#6366f1",
+            color: "#3b82f6",
             icon: <Zap size={16} />,
             page: "analysis",
           },
@@ -174,7 +174,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           </CardHeader>
           <CardBody>
             <div className="flex items-center gap-6">
-              <CircularScore score={84} size={100} color="#6366f1" label="ATS" sublabel="/100" />
+              <CircularScore score={84} size={100} color="#3b82f6" label="ATS" sublabel="/100" />
               <div className="flex-1 space-y-2.5">
                 {atsBreakdown.map((b) => (
                   <div key={b.category} className="flex items-center gap-2">
@@ -208,8 +208,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <Radar
                   name="Score"
                   dataKey="A"
-                  stroke="#6366f1"
-                  fill="#6366f1"
+                  stroke="#3b82f6"
+                  fill="#3b82f6"
                   fillOpacity={0.15}
                   strokeWidth={1.5}
                 />
@@ -229,8 +229,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               <AreaChart data={scoreHistory} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="atsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="matchGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -241,7 +241,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <XAxis dataKey="version" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
                 <YAxis domain={[50, 100]} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="ats" name="ATS" stroke="#6366f1" fill="url(#atsGrad)" strokeWidth={2} dot={{ r: 3, fill: "#6366f1" }} />
+                <Area type="monotone" dataKey="ats" name="ATS" stroke="#3b82f6" fill="url(#atsGrad)" strokeWidth={2} dot={{ r: 3, fill: "#3b82f6" }} />
                 <Area type="monotone" dataKey="match" name="Match" stroke="#10b981" fill="url(#matchGrad)" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -275,7 +275,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <CardBody className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Skills", score: jobDescription.skillScore, color: "#6366f1" },
+                { label: "Skills", score: jobDescription.skillScore, color: "#3b82f6" },
                 { label: "Semantic", score: jobDescription.semanticScore, color: "#10b981" },
                 { label: "Experience", score: jobDescription.experienceScore, color: "#38bdf8" },
               ].map((m) => (
@@ -344,7 +344,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 },
                 {
                   icon: <FileText size={14} />,
-                  color: "#6366f1",
+                  color: "#3b82f6",
                   title: "Improve Stripe bullet #1",
                   sub: "Stronger impact statement",
                   page: "improvement",
@@ -368,7 +368,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </CardBody>
           </Card>
 
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Multi-Job Comparison</h3>
               <Badge variant="muted">6 roles</Badge>
@@ -377,7 +377,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               {multiJobComparison.slice(0, 4).map((j) => (
                 <div key={j.role} className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">{j.role}</span>
-                  <ProgressBar value={j.match} color={j.color} className="w-24 shrink-0" />
+                  <div className="w-20 sm:w-24 shrink-0">
+                    <ProgressBar value={j.match} color={j.color} height="h-1.5" />
+                  </div>
                   <span className="font-mono text-xs text-foreground w-8 text-right shrink-0">{j.match}%</span>
                 </div>
               ))}
@@ -403,7 +405,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         <CardBody className="p-0">
           <div className="divide-y divide-border">
             {[
-              { icon: <Upload size={13} />, color: "#6366f1", text: "Resume uploaded", detail: "Marcus_Vance_Resume.pdf", time: "2 hours ago" },
+              { icon: <Upload size={13} />, color: "#3b82f6", text: "Resume uploaded", detail: "Marcus_Vance_Resume.pdf", time: "2 hours ago" },
               { icon: <Zap size={13} />, color: "#10b981", text: "ATS analysis completed", detail: "Score: 84/100 (+4 from v3)", time: "2 hours ago" },
               { icon: <Target size={13} />, color: "#38bdf8", text: "Job match analyzed", detail: "Senior Backend Engineer · Stripe · 81%", time: "1 hour ago" },
               { icon: <Lightbulb size={13} />, color: "#f59e0b", text: "5 recommendations generated", detail: "2 high priority, 2 medium, 1 low", time: "1 hour ago" },

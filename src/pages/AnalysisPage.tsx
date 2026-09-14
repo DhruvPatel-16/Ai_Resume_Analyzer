@@ -69,10 +69,10 @@ export default function AnalysisPage() {
       {/* Score hero */}
       <div
         className="rounded-xl border border-border p-6 relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(16,185,129,0.05) 100%)", backgroundColor: "var(--card)" }}
+        style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(16,185,129,0.05) 100%)", backgroundColor: "var(--card)" }}
       >
         <div className="flex items-center gap-8 flex-wrap">
-          <CircularScore score={resumeData.atsScore} size={130} color="#6366f1" label="ATS" sublabel="/100" />
+          <CircularScore score={resumeData.atsScore} size={130} color="#3b82f6" label="ATS" sublabel="/100" />
           <div className="flex-1 min-w-0">
             <h3 className="font-serif text-xl text-foreground mb-1">
               {resumeData.atsScore >= 80

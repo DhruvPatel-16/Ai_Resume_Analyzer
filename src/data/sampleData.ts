@@ -114,10 +114,10 @@ export const missingSkills = [
 ];
 
 export const atsBreakdown = [
-  { category: "Skills Match", score: 85, weight: 30, color: "#6366f1" },
+  { category: "Skills Match", score: 85, weight: 30, color: "#3b82f6" },
   { category: "Keywords", score: 78, weight: 20, color: "#10b981" },
   { category: "Experience Relevance", score: 88, weight: 20, color: "#38bdf8" },
-  { category: "Education", score: 95, weight: 10, color: "#8b5cf6" },
+  { category: "Education", score: 95, weight: 10, color: "#0ea5e9" },
   { category: "Resume Structure", score: 92, weight: 10, color: "#f59e0b" },
   { category: "Achievements", score: 72, weight: 10, color: "#f43f5e" },
 ];
@@ -295,10 +295,10 @@ export const resumeHistory = [
 ];
 
 export const multiJobComparison = [
-  { role: "Senior Backend Engineer", company: "Stripe", match: 81, color: "#6366f1" },
+  { role: "Senior Backend Engineer", company: "Stripe", match: 81, color: "#3b82f6" },
   { role: "Python Developer", company: "Anthropic", match: 88, color: "#10b981" },
   { role: "Full Stack Engineer", company: "Notion", match: 79, color: "#38bdf8" },
-  { role: "Software Engineer II", company: "Airbnb", match: 85, color: "#8b5cf6" },
+  { role: "Software Engineer II", company: "Airbnb", match: 85, color: "#0ea5e9" },
   { role: "Data Engineer", company: "Databricks", match: 64, color: "#f59e0b" },
   { role: "DevOps Engineer", company: "HashiCorp", match: 52, color: "#f43f5e" },
 ];

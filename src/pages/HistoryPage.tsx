@@ -1,26 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
-} from "recharts";
-import { FileText, TrendingUp, CheckCircle2, Trash2, Download, Eye, Loader2, GitCompare, ArrowRight } from "lucide-react";
-import { Card, CardBody, CardHeader, Badge, ProgressBar, Button } from "../components/ui";
+import { FileText, CheckCircle2, Trash2, Download, Eye, Loader2, GitCompare, ChevronLeft, ChevronRight } from "lucide-react";
+import { Card, CardBody, CardHeader, Badge, Button } from "../components/ui";
+import { DeleteResumeModal, ResumeDeleteItem } from "../components/DeleteResumeModal";
 import { useApp } from "../context/AppContext";
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload?.length) {
-    return (
-      <div className="rounded-lg border border-border px-3 py-2 text-xs shadow-lg" style={{ backgroundColor: "var(--card)" }}>
-        <p className="text-muted-foreground mb-1">{label}</p>
-        {payload.map((p: any) => (
-          <p key={p.name} className="font-mono font-semibold" style={{ color: p.color }}>
-            {p.name}: {p.value}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
 
 interface HistoryPageProps {
   onNavigate?: (page: string) => void;
@@ -29,7 +11,6 @@ interface HistoryPageProps {
 export default function HistoryPage({ onNavigate }: HistoryPageProps) {
   const {
     resumeHistory,
-    scoreHistory,
     deleteResume,
     downloadResume,
     previewResume,
@@ -39,10 +20,41 @@ export default function HistoryPage({ onNavigate }: HistoryPageProps) {
   } = useApp();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [resumeToDelete, setResumeToDelete] = useState<ResumeDeleteItem | null>(null);
+  const [bulkResumesToDelete, setBulkResumesToDelete] = useState<ResumeDeleteItem[] | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const RESUMES_PER_PAGE = 10;
+  const totalPages = Math.max(1, Math.ceil(resumeHistory.length / RESUMES_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safePage - 1) * RESUMES_PER_PAGE;
+  const paginatedResumes = resumeHistory.slice(pageStartIndex, pageStartIndex + RESUMES_PER_PAGE);
 
   useEffect(() => {
     refreshHistory();
   }, []);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [resumeHistory.length, totalPages, currentPage]);
+
+  const handleConfirmDelete = async (idOrIds: string | string[]) => {
+    try {
+      setIsDeleting(true);
+      const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+      await Promise.all(ids.map((id) => deleteResume(id)));
+      setSelectedCompareIds((prev) => prev.filter((id) => !ids.includes(id)));
+      setResumeToDelete(null);
+      setBulkResumesToDelete(null);
+    } catch (err: any) {
+      console.error("Failed to delete resumes", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleDownload = async (e: React.MouseEvent, r: any) => {
     e.stopPropagation();
@@ -95,129 +107,59 @@ export default function HistoryPage({ onNavigate }: HistoryPageProps) {
       <div>
         <h2 className="font-serif text-2xl text-foreground mb-0.5">Resume History</h2>
         <p className="text-sm text-muted-foreground">
-          Track your resume improvements across versions and compare scores
+          Manage your resume versions, preview or download files, and select candidates for multi-resume comparison
         </p>
       </div>
-
-      {/* Progress summary */}
-      <div
-        className="rounded-xl border border-emerald-500/20 p-5 relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.07) 0%, rgba(99,102,241,0.07) 100%)", backgroundColor: "var(--card)" }}
-      >
-        <div className="flex items-center gap-6 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-              <TrendingUp size={20} className="text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total improvement</p>
-              <p className="font-serif text-xl text-foreground">ATS Score +16 points</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {[
-              { label: "v1 → v4", value: "+16", sub: "ATS Score" },
-              { label: "v1 → v4", value: "+19%", sub: "Job Match" },
-              { label: "Skills", value: "+6", sub: "Added since v1" },
-            ].map((s) => (
-              <div key={s.sub} className="rounded-lg px-4 py-2 text-center" style={{ backgroundColor: "var(--muted)" }}>
-                <p className="font-mono text-base font-semibold text-emerald-400">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.sub}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Score progression chart */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-sm font-semibold text-foreground">Score Progression</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">ATS and Job Match scores across resume versions</p>
-        </CardHeader>
-        <CardBody>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={scoreHistory} margin={{ left: -15, right: 5 }}>
-              <defs>
-                <linearGradient id="atsG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="matchG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="version" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
-              <YAxis domain={[50, 100]} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="ats" name="ATS" stroke="#6366f1" fill="url(#atsG)" strokeWidth={2} dot={{ r: 4, fill: "#6366f1" }} />
-              <Area type="monotone" dataKey="match" name="Match" stroke="#10b981" fill="url(#matchG)" strokeWidth={2} dot={{ r: 4, fill: "#10b981" }} />
-            </AreaChart>
-          </ResponsiveContainer>
-          <div className="flex gap-4 mt-2">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <div className="w-3 h-0.5 bg-primary rounded" /> ATS Score
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <div className="w-3 h-0.5 rounded" style={{ backgroundColor: "#10b981" }} /> Job Match
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Selection action banner */}
-      {selectedCompareIds.length >= 2 && (
-        <div className="p-3.5 px-5 rounded-xl border border-primary/30 bg-primary/10 flex items-center justify-between flex-wrap gap-3 animate-fade-in">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
-              <GitCompare size={16} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {selectedCompareIds.length} Resumes Selected for Comparison
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Evaluate side-by-side ATS scores, skill overlaps, and candidate gaps
-              </p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => onNavigate && onNavigate("compare")}
-            className="flex items-center gap-1.5"
-          >
-            Open Compare Page <ArrowRight size={14} />
-          </Button>
-        </div>
-      )}
 
       {/* Version list */}
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Resume Versions ({resumeHistory.length})</h3>
-            <p className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-semibold text-foreground">Resume Versions ({resumeHistory.length})</h3>
+              {totalPages > 1 && (
+                <span className="text-xs px-2 py-0.5 rounded font-mono font-medium bg-secondary text-secondary-foreground border border-border">
+                  Page {safePage} of {totalPages}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Select 2 or more resumes to compare them side-by-side on the Compare page
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {selectedCompareIds.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearSelection}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Clear ({selectedCompareIds.length})
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                  className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Clear ({selectedCompareIds.length})
+                </Button>
+
+                {/* Delete option on the right side of Clear */}
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    const selected = resumeHistory.filter((r: any) => selectedCompareIds.includes(r.id));
+                    setBulkResumesToDelete(selected);
+                  }}
+                  className="text-xs flex items-center gap-1.5 cursor-pointer font-medium"
+                  title="Delete all selected resumes"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Selected ({selectedCompareIds.length})</span>
+                </Button>
+              </>
             )}
             <Button
               variant="outline"
               size="sm"
               onClick={selectAllResumes}
-              className="text-xs"
+              className="text-xs cursor-pointer"
             >
               Select All
             </Button>
@@ -235,7 +177,7 @@ export default function HistoryPage({ onNavigate }: HistoryPageProps) {
         </CardHeader>
         <CardBody className="p-0">
           <div className="divide-y divide-border">
-            {resumeHistory.map((r, i) => {
+            {paginatedResumes.map((r, i) => {
               const isSelected = selectedCompareIds.includes(r.id);
               return (
                 <div
@@ -280,8 +222,9 @@ export default function HistoryPage({ onNavigate }: HistoryPageProps) {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    {/* 1. View / Preview Button */}
                     <button
-                      className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                      className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
                       onClick={(e) => handlePreview(e, r)}
                       title="Preview resume inline"
                       disabled={previewingId === (r as any).id}
@@ -292,8 +235,10 @@ export default function HistoryPage({ onNavigate }: HistoryPageProps) {
                         <Eye size={13} />
                       )}
                     </button>
+
+                    {/* 2. Download Button */}
                     <button
-                      className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                      className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
                       onClick={(e) => handleDownload(e, r)}
                       title="Download resume file"
                       disabled={downloadingId === (r as any).id}
@@ -304,25 +249,117 @@ export default function HistoryPage({ onNavigate }: HistoryPageProps) {
                         <Download size={13} />
                       )}
                     </button>
-                    {!r.active && (
-                      <button
-                        className="p-1.5 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if ((r as any).id) deleteResume((r as any).id);
-                        }}
-                        title="Delete resume"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
+
+                    {/* 3. Delete Button (shifted to last) */}
+                    <button
+                      className="p-1.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setResumeToDelete({
+                          id: (r as any).id,
+                          filename: r.filename,
+                          atsScore: r.atsScore,
+                          uploadedAt: r.uploadedAt,
+                          jobMatch: r.jobMatch,
+                        });
+                      }}
+                      title="Delete resume"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
         </CardBody>
+
+        {/* Pagination Controls - 10 Resumes Per Page */}
+        {totalPages > 1 && (
+          <div className="border-t border-border px-5 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-secondary/15">
+            <p className="text-xs text-muted-foreground">
+              Showing{" "}
+              <span className="font-semibold text-foreground font-mono">
+                {resumeHistory.length === 0 ? 0 : pageStartIndex + 1}–{Math.min(pageStartIndex + RESUMES_PER_PAGE, resumeHistory.length)}
+              </span>{" "}
+              of <span className="font-semibold text-foreground font-mono">{resumeHistory.length}</span> resumes
+            </p>
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="text-xs h-8 px-2.5 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                title="Previous page"
+              >
+                <ChevronLeft size={13} />
+                <span>Prev</span>
+              </Button>
+
+              <div className="flex items-center gap-1 px-1">
+                {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => {
+                  if (
+                    totalPages > 7 &&
+                    pageNum !== 1 &&
+                    pageNum !== totalPages &&
+                    Math.abs(pageNum - safePage) > 1
+                  ) {
+                    if (pageNum === 2 || pageNum === totalPages - 1) {
+                      return (
+                        <span key={pageNum} className="text-xs text-muted-foreground px-1 select-none">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-7 h-7 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                        safePage === pageNum
+                          ? "bg-primary text-white shadow-xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="text-xs h-8 px-2.5 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                title="Next page"
+              >
+                <span>Next</span>
+                <ChevronRight size={13} />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
+
+      {/* Translucent Delete Confirmation Modal (supports single and bulk multi-resume delete) */}
+      <DeleteResumeModal
+        isOpen={!!resumeToDelete || !!bulkResumesToDelete}
+        resume={resumeToDelete}
+        items={bulkResumesToDelete || undefined}
+        onClose={() => {
+          setResumeToDelete(null);
+          setBulkResumesToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
