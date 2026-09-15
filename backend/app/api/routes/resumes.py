@@ -1,5 +1,7 @@
 import os
 import uuid
+import base64
+import tempfile
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
@@ -167,11 +169,21 @@ async def upload_resume(
         db.query(Resume).filter(Resume.user_id == user_id).update({"is_active": False})
 
     resume_id = str(uuid.uuid4())
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    saved_filename = f"{resume_id}_{os.path.basename(filename)}"
-    saved_file_path = os.path.join(settings.UPLOAD_DIR, saved_filename)
-    with open(saved_file_path, "wb") as f:
-        f.write(file_bytes)
+    saved_file_path = None
+    try:
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        saved_file_path = os.path.join(settings.UPLOAD_DIR, f"{resume_id}_{os.path.basename(filename)}")
+        with open(saved_file_path, "wb") as f:
+            f.write(file_bytes)
+    except OSError:
+        # Fallback to ephemeral temp directory on serverless runtimes
+        tmp_dir = tempfile.gettempdir()
+        saved_file_path = os.path.join(tmp_dir, f"{resume_id}_{os.path.basename(filename)}")
+        try:
+            with open(saved_file_path, "wb") as f:
+                f.write(file_bytes)
+        except Exception:
+            saved_file_path = None
 
     resume = Resume(
         id=resume_id,
@@ -180,6 +192,7 @@ async def upload_resume(
         file_type=ext.lstrip("."),
         file_size=len(file_bytes),
         file_path=saved_file_path,
+        file_data=base64.b64encode(file_bytes).decode("utf-8"),
         extracted_text=analysis_data["extractedText"],
         raw_data=analysis_data,
         ats_score=float(analysis_data["atsScore"]),
@@ -251,10 +264,20 @@ async def batch_upload_resumes(
             analysis_data = process_resume_content(filename, file_bytes)
 
             resume_id = str(uuid.uuid4())
-            saved_filename = f"{resume_id}_{os.path.basename(filename)}"
-            saved_file_path = os.path.join(settings.UPLOAD_DIR, saved_filename)
-            with open(saved_file_path, "wb") as out_f:
-                out_f.write(file_bytes)
+            saved_file_path = None
+            try:
+                os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+                saved_file_path = os.path.join(settings.UPLOAD_DIR, f"{resume_id}_{os.path.basename(filename)}")
+                with open(saved_file_path, "wb") as out_f:
+                    out_f.write(file_bytes)
+            except OSError:
+                tmp_dir = tempfile.gettempdir()
+                saved_file_path = os.path.join(tmp_dir, f"{resume_id}_{os.path.basename(filename)}")
+                try:
+                    with open(saved_file_path, "wb") as out_f:
+                        out_f.write(file_bytes)
+                except Exception:
+                    saved_file_path = None
 
             resume = Resume(
                 id=resume_id,
@@ -263,6 +286,7 @@ async def batch_upload_resumes(
                 file_type=ext.lstrip("."),
                 file_size=len(file_bytes),
                 file_path=saved_file_path,
+                file_data=base64.b64encode(file_bytes).decode("utf-8"),
                 extracted_text=analysis_data["extractedText"],
                 raw_data=analysis_data,
                 ats_score=float(analysis_data["atsScore"]),
@@ -324,30 +348,48 @@ async def batch_upload_resumes(
 def get_or_create_resume_file(resume: Resume, db: Session) -> Optional[str]:
     """
     Ensures an accessible binary file (.pdf or .docx) exists for download and preview.
-    Falls back cleanly to workspace root or auto-generates a clean PDF from extracted text.
+    Falls back cleanly to base64 DB blob, workspace root, or auto-generates PDF from text.
     """
     # 1. Existing stored path
     if resume.file_path and os.path.exists(resume.file_path):
         return resume.file_path
 
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    # 2. Reconstruct from Base64 file_data stored in DB
+    if resume.file_data:
+        try:
+            raw_bytes = base64.b64decode(resume.file_data)
+            ext = f".{resume.file_type}" if resume.file_type else ".pdf"
+            tmp_path = os.path.join(tempfile.gettempdir(), f"{resume.id}_{resume.filename or 'resume'}")
+            if not tmp_path.endswith(ext):
+                tmp_path = f"{tmp_path}{ext}"
+            with open(tmp_path, "wb") as out_f:
+                out_f.write(raw_bytes)
+            resume.file_path = tmp_path
+            db.commit()
+            return tmp_path
+        except Exception as err:
+            print(f"Failed to decode base64 file data for resume {resume.id}: {err}")
 
-    # 2. Check upload directory
-    candidate_names = [
-        f"{resume.id}_{resume.filename}",
-        resume.filename or "",
-        f"{resume.id}.pdf",
-        f"{resume.id}.docx",
-    ]
-    for cname in candidate_names:
-        if cname:
-            cpath = os.path.join(settings.UPLOAD_DIR, cname)
-            if os.path.exists(cpath):
-                resume.file_path = cpath
-                db.commit()
-                return cpath
+    # 3. Check upload directory
+    try:
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        candidate_names = [
+            f"{resume.id}_{resume.filename}",
+            resume.filename or "",
+            f"{resume.id}.pdf",
+            f"{resume.id}.docx",
+        ]
+        for cname in candidate_names:
+            if cname:
+                cpath = os.path.join(settings.UPLOAD_DIR, cname)
+                if os.path.exists(cpath):
+                    resume.file_path = cpath
+                    db.commit()
+                    return cpath
+    except OSError:
+        pass
 
-    # 3. Check workspace roots and Resume/ folder for matching names or Dhruv_Resume
+    # 4. Check workspace roots and Resume/ folder for matching names or Dhruv_Resume
     search_paths = [
         os.path.join(settings.BASE_DIR, resume.filename or ""),
         os.path.join(settings.BASE_DIR, "Resume", resume.filename or ""),
@@ -360,14 +402,18 @@ def get_or_create_resume_file(resume: Resume, db: Session) -> Optional[str]:
             db.commit()
             return sp
 
-    # 4. Fallback: generate PDF from extracted_text or raw_data
+    # 5. Fallback: generate PDF from extracted_text or raw_data
     text_content = resume.extracted_text
     if not text_content and resume.raw_data:
         text_content = resume.raw_data.get("extractedText", "")
 
     if text_content:
         gen_filename = f"{resume.id}_{resume.filename if (resume.filename and resume.filename.endswith('.pdf')) else 'resume.pdf'}"
-        gen_path = os.path.join(settings.UPLOAD_DIR, gen_filename)
+        try:
+            gen_dir = settings.UPLOAD_DIR if os.access(settings.UPLOAD_DIR, os.W_OK) else tempfile.gettempdir()
+        except Exception:
+            gen_dir = tempfile.gettempdir()
+        gen_path = os.path.join(gen_dir, gen_filename)
         try:
             import fitz
             doc = fitz.open()
@@ -693,10 +739,19 @@ PR-Sentinel: Automated Pull Request Quality & Security Bot
     
     user_id = current_user.id if current_user else None
     resume_id = str(uuid.uuid4())
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    sample_path = os.path.join(settings.UPLOAD_DIR, f"{resume_id}_Marcus_Vance_Resume.pdf")
-    with open(sample_path, "wb") as f:
-        f.write(pdf_bytes)
+    sample_path = None
+    try:
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        sample_path = os.path.join(settings.UPLOAD_DIR, f"{resume_id}_Marcus_Vance_Resume.pdf")
+        with open(sample_path, "wb") as f:
+            f.write(pdf_bytes)
+    except OSError:
+        sample_path = os.path.join(tempfile.gettempdir(), f"{resume_id}_Marcus_Vance_Resume.pdf")
+        try:
+            with open(sample_path, "wb") as f:
+                f.write(pdf_bytes)
+        except Exception:
+            sample_path = None
 
     resume = Resume(
         id=resume_id,
@@ -705,6 +760,7 @@ PR-Sentinel: Automated Pull Request Quality & Security Bot
         file_type="pdf",
         file_size=len(pdf_bytes),
         file_path=sample_path,
+        file_data=base64.b64encode(pdf_bytes).decode("utf-8"),
         extracted_text=sample_resume_text,
         raw_data=analysis,
         ats_score=float(analysis["atsScore"]),

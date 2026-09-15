@@ -38,6 +38,7 @@ class Resume(Base):
     file_type = Column(String(50), nullable=False)
     file_size = Column(Integer, default=0)
     file_path = Column(String(500), nullable=True)
+    file_data = Column(Text, nullable=True)  # Base64-encoded file blob for serverless / ephemeral persistence
     extracted_text = Column(Text, nullable=False)
     raw_data = Column(JSON, nullable=True)  # Stores parsed sections, contact, education, experience, etc.
     ats_score = Column(Float, default=0.0)
