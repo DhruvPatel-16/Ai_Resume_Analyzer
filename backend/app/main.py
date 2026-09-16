@@ -10,12 +10,12 @@ from backend.app.db import models  # noqa: F401
 from sqlalchemy import text
 from backend.app.api.routes import auth, resumes, jobs, improvements, dashboard
 
-# Attempt initial table sync
-ensure_db_initialized()
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_db_initialized()
+    try:
+        ensure_db_initialized()
+    except Exception as e:
+        print(f"Startup DB init notice: {e}", flush=True)
     yield
 
 app = FastAPI(
