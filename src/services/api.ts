@@ -1,6 +1,16 @@
 // API Client for AI Resume Analyzer & Job Matcher
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+function getBaseUrl(): string {
+  let url = (import.meta.env.VITE_API_URL || "").trim();
+  if (!url) return "/api";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    const trimmed = url.replace(/\/+$/, "");
+    return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+  }
+  return url.startsWith("/") ? url : `/${url}`;
+}
+
+const API_BASE_URL = getBaseUrl();
 
 class ApiError extends Error {
   status: number;
