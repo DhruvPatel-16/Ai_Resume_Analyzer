@@ -112,9 +112,10 @@ app.include_router(jobs.router, prefix="/api/index.py", include_in_schema=False)
 app.include_router(improvements.router, prefix="/api/index.py", include_in_schema=False)
 app.include_router(dashboard.router, prefix="/api/index.py", include_in_schema=False)
 
-@app.get("/")
-@app.get("/health")
-@app.get("/api/health")
+@app.api_route("/", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/health", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/api/health", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/api/index.py", methods=["GET", "POST", "HEAD", "OPTIONS"])
 def health_check():
     db_status = "connected"
     db_error = None
