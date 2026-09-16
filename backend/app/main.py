@@ -31,13 +31,26 @@ async def vercel_path_normalization(request: Request, call_next):
     Normalizes paths when running behind Vercel serverless function rewrites.
     Restores the real destination path if Vercel routes through /api/index.py.
     """
-    matched_path = request.headers.get("x-matched-path")
-    if matched_path and request.url.path in ("/api/index.py", "/api/index", "/api/"):
-        clean_path = matched_path.split("?")[0]
+    original_path = (
+        request.headers.get("x-invoke-path")
+        or request.headers.get("x-matched-path")
+        or request.headers.get("x-real-path")
+        or request.query_params.get("__path__")
+    )
+    current_path = request.scope.get("path", "")
+    if original_path and current_path in ("/api/index.py", "/api/index", "/api/", "/api", "/index.py", "/"):
+        clean_path = original_path.split("?")[0]
+        if not clean_path.startswith("/"):
+            clean_path = f"/{clean_path}"
         request.scope["path"] = clean_path
 
     response = await call_next(request)
     return response
+
+# Handle preflight OPTIONS requests gracefully
+@app.options("/{full_path:path}")
+async def preflight_handler(full_path: str):
+    return JSONResponse(status_code=200, content={"status": "ok"})
 
 # CORS middleware configuration
 app.add_middleware(
@@ -91,6 +104,13 @@ app.include_router(resumes.router, prefix="", include_in_schema=False)
 app.include_router(jobs.router, prefix="", include_in_schema=False)
 app.include_router(improvements.router, prefix="", include_in_schema=False)
 app.include_router(dashboard.router, prefix="", include_in_schema=False)
+
+# Also mount under /api/index.py in case Vercel rewrites pass function name in path
+app.include_router(auth.router, prefix="/api/index.py", include_in_schema=False)
+app.include_router(resumes.router, prefix="/api/index.py", include_in_schema=False)
+app.include_router(jobs.router, prefix="/api/index.py", include_in_schema=False)
+app.include_router(improvements.router, prefix="/api/index.py", include_in_schema=False)
+app.include_router(dashboard.router, prefix="/api/index.py", include_in_schema=False)
 
 @app.get("/")
 @app.get("/health")
